@@ -178,10 +178,19 @@ public static class Geo
 
         if (d.Kind == DiagramKind.Sequence && e.IsMessage) { BuildMessage(e, s, t, d, fs, p); return p; }
 
+        // Compute automatic offset when multiple edges connect the same two nodes
+        var siblings = d.Edges.Where(x => !(d.Kind == DiagramKind.Sequence && x.IsMessage) &&
+            ((x.SourceId == s.Id && x.TargetId == t.Id) || (x.SourceId == t.Id && x.TargetId == s.Id))).ToList();
+        int idx = siblings.IndexOf(e);
+        double autoOffset = siblings.Count > 1 ? (idx - (siblings.Count - 1) / 2.0) * 26.0 : 0.0;
+        if (e.SourceId != siblings[0].SourceId) autoOffset = -autoOffset;
+        double totalOffset = autoOffset + e.BendOffset;
+
         if (s == t)
         {
             var b = Bounds(s, fs);
-            double x1 = b.X + b.Width * 0.65, yTop = b.Y - 36, xR = b.Right + 36, yMid = b.Y + b.Height * 0.5;
+            double spread = idx * 18.0;
+            double x1 = b.X + b.Width * 0.65 - spread * 0.4, yTop = b.Y - 36 - spread, xR = b.Right + 36 + spread, yMid = b.Y + b.Height * 0.5 + spread * 0.4;
             p.Points = new() { new(x1, b.Y), new(x1, yTop), new(xR, yTop), new(xR, yMid), new(b.Right, yMid) };
             p.StartTip = p.Points[0]; p.EndTip = p.Points[^1];
             p.StartDir = new Vector(0, -1); p.EndDir = new Vector(-1, 0);
@@ -194,26 +203,45 @@ public static class Geo
             if (Math.Abs(dx) >= Math.Abs(dy))
             {
                 double sx = dx > 0 ? sb.Right : sb.Left, tx = dx > 0 ? tb.Left : tb.Right;
-                double mid = (sx + tx) / 2 + e.BendOffset;
-                p.Points = new() { new(sx, sc.Y), new(mid, sc.Y), new(mid, tc.Y), new(tx, tc.Y) };
+                double mid = (sx + tx) / 2 + totalOffset;
+                p.Points = new() { new(sx, sc.Y + autoOffset * 0.35), new(mid, sc.Y + autoOffset * 0.35), new(mid, tc.Y + autoOffset * 0.35), new(tx, tc.Y + autoOffset * 0.35) };
                 p.StartDir = new Vector(Math.Sign(dx), 0); p.EndDir = new Vector(Math.Sign(dx), 0);
             }
             else
             {
                 double sy = dy > 0 ? sb.Bottom : sb.Top, ty = dy > 0 ? tb.Top : tb.Bottom;
-                double mid = (sy + ty) / 2 + e.BendOffset;
-                p.Points = new() { new(sc.X, sy), new(sc.X, mid), new(tc.X, mid), new(tc.X, ty) };
+                double mid = (sy + ty) / 2 + totalOffset;
+                p.Points = new() { new(sc.X + autoOffset * 0.35, sy), new(sc.X + autoOffset * 0.35, mid), new(tc.X + autoOffset * 0.35, mid), new(tc.X + autoOffset * 0.35, ty) };
                 p.StartDir = new Vector(0, Math.Sign(dy)); p.EndDir = new Vector(0, Math.Sign(dy));
             }
             p.StartTip = p.Points[0]; p.EndTip = p.Points[^1];
         }
         else
         {
-            var a1 = Anchor(s, Center(Bounds(t, fs)), fs);
-            var a2 = Anchor(t, Center(Bounds(s, fs)), fs);
-            var dir = Norm(a2 - a1);
-            p.Points = new() { a1, a2 };
-            p.StartTip = a1; p.EndTip = a2; p.StartDir = dir; p.EndDir = dir;
+            var sc = Center(Bounds(s, fs));
+            var tc = Center(Bounds(t, fs));
+            var baseDir = Norm(tc - sc);
+            var perp = Perp(baseDir);
+            var shift = perp * totalOffset;
+
+            var a1 = Anchor(s, tc + shift, fs);
+            var a2 = Anchor(t, sc + shift, fs);
+            if (Math.Abs(totalOffset) > 0.5)
+            {
+                var midPt = new Point((a1.X + a2.X) / 2 + shift.X, (a1.Y + a2.Y) / 2 + shift.Y);
+                a1 = Anchor(s, midPt, fs);
+                a2 = Anchor(t, midPt, fs);
+                p.Points = new() { a1, midPt, a2 };
+                p.StartTip = a1; p.EndTip = a2;
+                p.StartDir = Norm(midPt - a1);
+                p.EndDir = Norm(a2 - midPt);
+            }
+            else
+            {
+                var dir = Norm(a2 - a1);
+                p.Points = new() { a1, a2 };
+                p.StartTip = a1; p.EndTip = a2; p.StartDir = dir; p.EndDir = dir;
+            }
         }
         AddStandardLabels(e, s, t, d, fs, p, def);
         return p;
@@ -221,12 +249,16 @@ public static class Geo
 
     static void AddStandardLabels(UmlEdge e, UmlNode s, UmlNode t, Diagram d, double fs, EdgePath p, EdgeDef def)
     {
+        bool isSelf = s == t && p.Points.Count >= 4;
         var dir = Norm(p.EndTip - p.StartTip); var perp = Perp(dir);
         if (perp.Y > 0) perp = -perp;
-        var mid = new Point((p.StartTip.X + p.EndTip.X) / 2 + e.LabelDx, (p.StartTip.Y + p.EndTip.Y) / 2 + e.LabelDy);
+        var mid = isSelf
+            ? new Point(p.Points[2].X + 8 + e.LabelDx, p.Points[1].Y + e.LabelDy)
+            : new Point((p.StartTip.X + p.EndTip.X) / 2 + e.LabelDx, (p.StartTip.Y + p.EndTip.Y) / 2 + e.LabelDy);
+        string align = isSelf ? "start" : "middle";
 
         if (!string.IsNullOrEmpty(def.Stereo))
-            p.Labels.Add(new EdgeLabel { X = mid.X + perp.X * 12, Y = mid.Y + perp.Y * 12 - fs / 2, Text = "«" + def.Stereo + "»", Size = fs - 1 });
+            p.Labels.Add(new EdgeLabel { X = mid.X + (isSelf ? 0 : perp.X * 12), Y = mid.Y + (isSelf ? 0 : perp.Y * 12) - fs / 2, Text = "«" + def.Stereo + "»", Size = fs - 1, Align = align });
 
         if (e.Kind is EdgeKind.Association or EdgeKind.Aggregation or EdgeKind.Composition or EdgeKind.Link or EdgeKind.CommunicationPath or EdgeKind.CommunicationAssociation)
         {
@@ -239,22 +271,22 @@ public static class Geo
             if (!string.IsNullOrWhiteSpace(e.TargetRole))
                 p.Labels.Add(new EdgeLabel { X = p.EndTip.X - dir.X * 34 + perp.X * 13, Y = p.EndTip.Y - dir.Y * 34 + perp.Y * 13 - fs / 2, Text = e.TargetRole, Size = fs - 1, Italic = true, Align = "end" });
             if (!string.IsNullOrWhiteSpace(e.Name))
-                p.Labels.Add(new EdgeLabel { X = mid.X + perp.X * 11, Y = mid.Y + perp.Y * 11 - fs / 2, Text = e.Name + (e.ShowDirection ? " ▶" : ""), Size = fs - 1 });
+                p.Labels.Add(new EdgeLabel { X = mid.X + (isSelf ? 0 : perp.X * 11), Y = mid.Y + (isSelf ? 0 : perp.Y * 11) - fs / 2, Text = e.Name + (e.ShowDirection ? " ▶" : ""), Size = fs - 1, Align = align });
         }
         else if (e.Kind == EdgeKind.Transition)
         {
             var txt = TransitionText(e);
-            if (!string.IsNullOrEmpty(txt)) p.Labels.Add(new EdgeLabel { X = mid.X, Y = mid.Y - fs - 2, Text = txt, Size = fs - 1 });
+            if (!string.IsNullOrEmpty(txt)) p.Labels.Add(new EdgeLabel { X = mid.X, Y = isSelf ? mid.Y : mid.Y - fs - 2, Text = txt, Size = fs - 1, Align = align });
         }
         else if (e.Kind is EdgeKind.ControlFlow or EdgeKind.ObjectFlow)
         {
-            if (!string.IsNullOrWhiteSpace(e.Guard)) p.Labels.Add(new EdgeLabel { X = mid.X, Y = mid.Y - fs - 2, Text = "[" + e.Guard + "]", Size = fs - 1 });
-            if (!string.IsNullOrWhiteSpace(e.Name)) p.Labels.Add(new EdgeLabel { X = mid.X, Y = mid.Y + 4, Text = e.Name, Size = fs - 1 });
+            if (!string.IsNullOrWhiteSpace(e.Guard)) p.Labels.Add(new EdgeLabel { X = mid.X, Y = mid.Y - fs - 2, Text = "[" + e.Guard + "]", Size = fs - 1, Align = align });
+            if (!string.IsNullOrWhiteSpace(e.Name)) p.Labels.Add(new EdgeLabel { X = mid.X, Y = mid.Y + 4, Text = e.Name, Size = fs - 1, Align = align });
         }
         else if (e.Kind == EdgeKind.Extend && !string.IsNullOrWhiteSpace(e.Condition))
-            p.Labels.Add(new EdgeLabel { X = mid.X, Y = mid.Y + 6, Text = "(" + e.Condition + ")", Size = fs - 2, Italic = true });
+            p.Labels.Add(new EdgeLabel { X = mid.X, Y = mid.Y + 6, Text = "(" + e.Condition + ")", Size = fs - 2, Italic = true, Align = align });
         else if (!string.IsNullOrWhiteSpace(e.Name) && string.IsNullOrEmpty(def.Stereo))
-            p.Labels.Add(new EdgeLabel { X = mid.X + perp.X * 11, Y = mid.Y + perp.Y * 11 - fs / 2, Text = e.Name, Size = fs - 1 });
+            p.Labels.Add(new EdgeLabel { X = mid.X + (isSelf ? 0 : perp.X * 11), Y = mid.Y + (isSelf ? 0 : perp.Y * 11) - fs / 2, Text = e.Name, Size = fs - 1, Align = align });
     }
 
     public static string TransitionText(UmlEdge e)

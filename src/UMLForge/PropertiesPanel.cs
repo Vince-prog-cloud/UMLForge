@@ -24,8 +24,23 @@ public class PropertiesPanel : ScrollViewer
         Rebuild();
     }
 
+    readonly List<Action> cleanup = new();
+
     void Rebuild()
     {
+        foreach (var dg in root.Children.OfType<DataGrid>())
+        {
+            dg.CommitEdit(DataGridEditingUnit.Cell, true);
+            dg.CommitEdit(DataGridEditingUnit.Row, true);
+            if (dg.Items is System.ComponentModel.IEditableCollectionView view && (view.IsEditingItem || view.IsAddingNew))
+            {
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, Rebuild);
+                return;
+            }
+        }
+        foreach (var dispose in cleanup) dispose();
+        cleanup.Clear();
+
         root.Children.Clear();
         if (ed.Current == null) return;
         if (ed.SelNodes.Count == 1) NodeForm(ed.Current.Node(ed.SelNodes.First()));

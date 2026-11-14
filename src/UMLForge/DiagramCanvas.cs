@@ -316,9 +316,13 @@ public class DiagramCanvas : FrameworkElement
                 double tol = 8 / Zoom;
                 if (p.Points.Count > 0 && (w - p.StartTip).Length < tol) { ed.Begin(); drag = new DragState { Mode = "reconnect", Edge = edge, Handle = "start", StartWorld = w }; return; }
                 if (p.Points.Count > 0 && (w - p.EndTip).Length < tol) { ed.Begin(); drag = new DragState { Mode = "reconnect", Edge = edge, Handle = "end", StartWorld = w }; return; }
-                if (edge.Routing == Routing.Orthogonal && p.Points.Count == 4)
+                if (p.Points.Count >= 2)
                 {
-                    var mid = new Point((p.Points[1].X + p.Points[2].X) / 2, (p.Points[1].Y + p.Points[2].Y) / 2);
+                    var mid = p.Points.Count == 4
+                        ? new Point((p.Points[1].X + p.Points[2].X) / 2, (p.Points[1].Y + p.Points[2].Y) / 2)
+                        : p.Points.Count == 3
+                            ? p.Points[1]
+                            : new Point((p.Points[0].X + p.Points[1].X) / 2, (p.Points[0].Y + p.Points[1].Y) / 2);
                     if ((w - mid).Length < tol) { ed.Begin(); drag = new DragState { Mode = "bend", Edge = edge, StartWorld = w, OrigBend = edge.BendOffset }; return; }
                 }
             }
@@ -385,12 +389,21 @@ public class DiagramCanvas : FrameworkElement
                         var n = ed.Current.Node(primary);
                         var b = Geo.Bounds(n, Settings.FontSize);
                         double nx = drag.Orig[primary].x + dx, ny = drag.Orig[primary].y + dy;
-                        if (Settings.Snap) { nx = Math.Round(nx / Settings.GridSize) * Settings.GridSize; ny = Math.Round(ny / Settings.GridSize) * Settings.GridSize; dx = nx - drag.Orig[primary].x; dy = ny - drag.Orig[primary].y; }
+                        if (Settings.Snap)
+                        {
+                            nx = Math.Round(nx / Settings.GridSize) * Settings.GridSize;
+                            ny = Math.Round(ny / Settings.GridSize) * Settings.GridSize;
+                            dx = nx - drag.Orig[primary].x;
+                            dy = ny - drag.Orig[primary].y;
+                        }
                         if (Settings.Guides)
                         {
                             double tol = 6 / Zoom;
+                            double bestDx = tol, bestDy = tol;
+                            double? snapX = null, snapY = null;
                             var mineX = new[] { nx, nx + b.Width / 2, nx + b.Width };
                             var mineY = new[] { ny, ny + b.Height / 2, ny + b.Height };
+
                             foreach (var other in ed.Current.Nodes)
                             {
                                 if (drag.Orig.ContainsKey(other.Id)) continue;
@@ -398,9 +411,39 @@ public class DiagramCanvas : FrameworkElement
                                 var ox = new[] { ob.X, ob.X + ob.Width / 2, ob.Right };
                                 var oy = new[] { ob.Y, ob.Y + ob.Height / 2, ob.Bottom };
                                 foreach (var mx in mineX) foreach (var x in ox)
-                                    if (Math.Abs(mx - x) < tol) { dx += x - mx; drag.Guides.Add((new Point(x, Math.Min(ny, ob.Y) - 30), new Point(x, Math.Max(ny + b.Height, ob.Bottom) + 30))); }
+                                {
+                                    double diff = x - mx;
+                                    if (Math.Abs(diff) < Math.Abs(bestDx)) { bestDx = diff; snapX = x; }
+                                }
                                 foreach (var my in mineY) foreach (var y in oy)
-                                    if (Math.Abs(my - y) < tol) { dy += y - my; drag.Guides.Add((new Point(Math.Min(nx, ob.X) - 30, y), new Point(Math.Max(nx + b.Width, ob.Right) + 30, y))); }
+                                {
+                                    double diff = y - my;
+                                    if (Math.Abs(diff) < Math.Abs(bestDy)) { bestDy = diff; snapY = y; }
+                                }
+                            }
+                            if (snapX is double sx)
+                            {
+                                dx += bestDx; nx += bestDx;
+                                double minY = ny, maxY = ny + b.Height;
+                                foreach (var other in ed.Current.Nodes.Where(o => !drag.Orig.ContainsKey(o.Id)))
+                                {
+                                    var ob = Geo.Bounds(other, Settings.FontSize);
+                                    if (Math.Abs(ob.X - sx) < 0.5 || Math.Abs(ob.X + ob.Width / 2 - sx) < 0.5 || Math.Abs(ob.Right - sx) < 0.5)
+                                    { minY = Math.Min(minY, ob.Y); maxY = Math.Max(maxY, ob.Bottom); }
+                                }
+                                drag.Guides.Add((new Point(sx, minY - 24), new Point(sx, maxY + 24)));
+                            }
+                            if (snapY is double sy)
+                            {
+                                dy += bestDy; ny += bestDy;
+                                double minX = nx, maxX = nx + b.Width;
+                                foreach (var other in ed.Current.Nodes.Where(o => !drag.Orig.ContainsKey(o.Id)))
+                                {
+                                    var ob = Geo.Bounds(other, Settings.FontSize);
+                                    if (Math.Abs(ob.Y - sy) < 0.5 || Math.Abs(ob.Y + ob.Height / 2 - sy) < 0.5 || Math.Abs(ob.Bottom - sy) < 0.5)
+                                    { minX = Math.Min(minX, ob.X); maxX = Math.Max(maxX, ob.Right); }
+                                }
+                                drag.Guides.Add((new Point(minX - 24, sy), new Point(maxX + 24, sy)));
                             }
                         }
                     }
@@ -432,7 +475,22 @@ public class DiagramCanvas : FrameworkElement
                 }
             case "reconnect":
                 {
-                    drag.PreviewPoint = w; drag.ReconnectTarget = HitNode(w);
+                    drag.PreviewPoint = w;
+                    var target = HitNode(w);
+                    drag.ReconnectTarget = target;
+                    if (target != null)
+                    {
+                        var s = drag.Handle == "start" ? target : ed.Current.Node(drag.Edge.SourceId);
+                        var t = drag.Handle == "end" ? target : ed.Current.Node(drag.Edge.TargetId);
+                        var (ok, reason) = Catalog.CanConnect(drag.Edge.Kind, s, t, ed.Current.Kind);
+                        drag.PreviewValid = ok;
+                        Hint(ok ? "" : reason);
+                    }
+                    else
+                    {
+                        drag.PreviewValid = false;
+                        Hint("Drop on a valid element to reconnect.");
+                    }
                     break;
                 }
             case "marquee":

@@ -255,9 +255,10 @@ public static class XmiExporter
         var primitives = new HashSet<string>();
         string IdOf(UmlNode n)
         {
-            string key = n.Kind + "|" + n.Name;
-            if (ids.TryGetValue(key, out var id)) return id;
-            id = "_" + Guid.NewGuid().ToString("N")[..12]; ids[key] = id; return id;
+            if (ids.TryGetValue(n.Id, out var id)) return id;
+            id = "_" + n.Id;
+            ids[n.Id] = id;
+            return id;
         }
         string TypeRef(string type)
         {
@@ -298,7 +299,7 @@ public static class XmiExporter
                         foreach (var a in n.Attributes)
                         {
                             string tr = TypeRef(a.Type);
-                            sb.AppendLine($"        <ownedAttribute xmi:type=\"uml:Property\" xmi:id=\"_{Guid.NewGuid():N}\" name=\"{X(a.Name)}\" visibility=\"{n.Visibility.ToString().ToLower()}\"{(a.IsStatic ? " isStatic=\"true\"" : "")}{(a.IsReadOnly ? " isReadOnly=\"true\"" : "")}{(tr != null ? $" type=\"{tr}\"" : "")}>");
+                            sb.AppendLine($"        <ownedAttribute xmi:type=\"uml:Property\" xmi:id=\"_{Guid.NewGuid():N}\" name=\"{X(a.Name)}\" visibility=\"{a.Visibility.ToString().ToLower()}\"{(a.IsStatic ? " isStatic=\"true\"" : "")}{(a.IsReadOnly ? " isReadOnly=\"true\"" : "")}{(tr != null ? $" type=\"{tr}\"" : "")}>");
                             Mult(sb, a.Multiplicity);
                             if (!string.IsNullOrWhiteSpace(a.Default)) sb.AppendLine($"          <defaultValue xmi:type=\"uml:LiteralString\" xmi:id=\"_{Guid.NewGuid():N}\" value=\"{X(a.Default)}\"/>");
                             sb.AppendLine("        </ownedAttribute>");
@@ -389,6 +390,7 @@ public static class XmiExporter
                 foreach (var e in d.Edges.Where(e => e.Kind == EdgeKind.Transition))
                 {
                     sb.AppendLine($"          <transition xmi:type=\"uml:Transition\" xmi:id=\"{e.Id}\" source=\"{e.SourceId}\" target=\"{e.TargetId}\">");
+                    if (!string.IsNullOrWhiteSpace(e.Trigger)) sb.AppendLine($"            <trigger xmi:type=\"uml:Trigger\" xmi:id=\"_{Guid.NewGuid():N}\" name=\"{X(e.Trigger)}\"/>");
                     if (!string.IsNullOrWhiteSpace(e.Guard)) sb.AppendLine($"            <guard xmi:type=\"uml:OpaqueExpression\" xmi:id=\"_{Guid.NewGuid():N}\"><body>{X(e.Guard)}</body></guard>");
                     if (!string.IsNullOrWhiteSpace(e.Effect)) sb.AppendLine($"            <effect xmi:type=\"uml:OpaqueBehavior\" xmi:id=\"_{Guid.NewGuid():N}\"><body>{X(e.Effect)}</body></effect>");
                     sb.AppendLine("          </transition>");

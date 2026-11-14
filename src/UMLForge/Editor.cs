@@ -17,7 +17,19 @@ public class Editor
     public Project Project
     {
         get => _project;
-        set { _project = value; Open.Clear(); foreach (var d in value.AllDiagrams.Take(1)) Open.Add(d); Current = Open.FirstOrDefault(); Changed?.Invoke(); }
+        set
+        {
+            _project = value;
+            undo.Clear();
+            redo.Clear();
+            pending = null;
+            CommitCount = 0;
+            SavedAtCommit = 0;
+            Open.Clear();
+            foreach (var d in value.AllDiagrams.Take(1)) Open.Add(d);
+            Current = Open.FirstOrDefault();
+            Changed?.Invoke();
+        }
     }
     public ObservableCollection<Diagram> Open { get; } = new();
     Diagram _current;
@@ -89,6 +101,7 @@ public class Editor
     // ---------- element operations ----------
     public UmlNode AddNode(NodeKind kind, double x, double y)
     {
+        if (Current == null) return null;
         var def = Catalog.Nodes[kind];
         var n = new UmlNode { Kind = kind, X = x - def.W / 2, Y = y - def.H / 2, W = def.W, H = def.H };
         n.Name = kind switch
@@ -115,23 +128,36 @@ public class Editor
 
     public (bool ok, string reason) TryConnect(EdgeKind kind, UmlNode s, UmlNode t)
     {
+        if (Current == null) return (false, "No active diagram.");
         var (ok, reason) = Catalog.CanConnect(kind, s, t, Current.Kind);
         if (!ok) return (false, reason);
         if (Current.Edges.Any(e => e.Kind == kind && e.SourceId == s.Id && e.TargetId == t.Id && kind != EdgeKind.Association))
             return (false, "That relationship already exists.");
         if (kind == EdgeKind.Generalization && CreatesCycle(s, t)) return (false, "Generalization cycle detected.");
+
         var e = new UmlEdge { Kind = kind, SourceId = s.Id, TargetId = t.Id, Routing = Routing.Straight };
         if (s == t && kind == EdgeKind.Transition) e.LabelDy = -10;
+
+        UmlEdge reply = null;
         if (Current.Kind == DiagramKind.Sequence && e.IsMessage)
         {
             double y = Math.Max(s.Y + 36, t.Y + 36) + 60;
             var existing = Current.Edges.Where(x => x.IsMessage).ToList();
             if (existing.Count > 0) y = existing.Max(x => x.Y) + 44;
             e.Y = y; e.Name = "message()";
+
+            double bottomY = y;
             if (kind == EdgeKind.MessageSync && s != t)
-                t.Activations.Add(new Activation { Start = y, End = y + 56, MessageId = e.Id });
+            {
+                bottomY = y + 48;
+                t.Activations.Add(new Activation { Start = y, End = bottomY, MessageId = e.Id });
+                reply = new UmlEdge { Kind = EdgeKind.MessageReply, SourceId = t.Id, TargetId = s.Id, Y = bottomY, Name = "return" };
+            }
             if (kind == EdgeKind.MessageSync && s == t)
-                s.Activations.Add(new Activation { Start = y, End = y + 26, MessageId = e.Id });
+            {
+                bottomY = y + 26;
+                s.Activations.Add(new Activation { Start = y, End = bottomY, MessageId = e.Id });
+            }
             if (kind == EdgeKind.MessageReply)
             {
                 var act = s.Activations.Where(a => a.Start <= y).OrderByDescending(a => a.Start).FirstOrDefault();
@@ -139,8 +165,17 @@ public class Editor
             }
             if (kind == EdgeKind.MessageDelete)
                 foreach (var a in t.Activations) a.End = Math.Min(a.End, y);
+
+            // Auto-extend lifelines if messages go near the bottom
+            s.H = Math.Max(s.H, bottomY - s.Y + 50);
+            t.H = Math.Max(t.H, bottomY - t.Y + 50);
         }
-        Mutate(() => Current.Edges.Add(e), "Connect " + Catalog.Edges[kind].Label);
+
+        Mutate(() =>
+        {
+            Current.Edges.Add(e);
+            if (reply != null) Current.Edges.Add(reply);
+        }, "Connect " + Catalog.Edges[kind].Label);
         SelectOnly(e);
         return (true, "");
     }

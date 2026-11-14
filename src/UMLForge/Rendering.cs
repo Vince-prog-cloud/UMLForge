@@ -392,9 +392,9 @@ public class Renderer
         for (int i = 0; i < pts.Count - 1; i++) Line(pts[i], pts[i + 1], pen);
         DrawMarker(p.StartMarker, p.StartTip, p.StartDir);
         DrawMarker(p.EndMarker, p.EndTip, p.EndDir);
-        if (e.Kind == EdgeKind.Association)
+        if (e.Kind is EdgeKind.Association or EdgeKind.Aggregation or EdgeKind.Composition)
         {
-            if (e.SourceNavigable) DrawMarker(MarkerKind.Open, p.StartTip, p.StartDir * -1);
+            if (e.SourceNavigable && e.Kind == EdgeKind.Association) DrawMarker(MarkerKind.Open, p.StartTip, p.StartDir * -1);
             if (e.TargetNavigable) DrawMarker(MarkerKind.Open, p.EndTip, p.EndDir);
         }
         foreach (var l in p.Labels) HaloText(l);

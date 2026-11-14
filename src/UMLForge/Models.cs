@@ -149,7 +149,7 @@ public class UmlEdge : Observable
     public string Id { get; set; } = Guid.NewGuid().ToString("N")[..10];
     EdgeKind _kind; string _src = "", _tgt = "", _name = "";
     string _srcRole = "", _tgtRole = "", _srcMult = "", _tgtMult = "";
-    bool _srcNav, _tgtNav, _showDir;
+    bool _srcNav, _tgtNav = true, _showDir;
     Routing _routing = Routing.Straight; double _bend, _ldx, _ldy, _y;
     string _guard = "", _trigger = "", _effect = "", _condition = "";
 
