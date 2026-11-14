@@ -26,6 +26,7 @@ public class DiagramCanvas : FrameworkElement
 
     class DragState
     {
+        public Activation Act;
         public string Mode; public Point StartWorld, StartScreen;
         public UmlNode Node; public UmlEdge Edge; public string Handle;
         public Dictionary<string, (double x, double y)> Orig = new();
@@ -221,6 +222,23 @@ public class DiagramCanvas : FrameworkElement
         foreach (var p in Renderer.PortPoints(b)) { if ((w - p).Length < tol) return names[i]; i++; }
         return null;
     }
+    bool HitActivationEdge(Point w, out UmlNode lifeline, out Activation act, out string side)
+    {
+        lifeline = null; act = null; side = null;
+        if (ed.Current.Kind != DiagramKind.Sequence) return false;
+        double tol = 6 / Zoom;
+        foreach (var n in ed.Current.Nodes.Where(n => n.Kind == NodeKind.Lifeline))
+        {
+            double cx = n.X + n.W / 2;
+            if (Math.Abs(w.X - cx) > 10) continue;
+            foreach (var a in n.Activations)
+            {
+                if (Math.Abs(w.Y - a.End) <= tol) { lifeline = n; act = a; side = "bottom"; return true; }
+                if (Math.Abs(w.Y - a.Start) <= tol) { lifeline = n; act = a; side = "top"; return true; }
+            }
+        }
+        return false;
+    }
 
     // ---------------- mouse ----------------
     Point lastMouseWorld;
@@ -251,13 +269,35 @@ public class DiagramCanvas : FrameworkElement
         }
 
         // selection tool
-        if (ed.SelNodes.Count == 1)
+        // 1. Check selected edge endpoints/bend handle BEFORE HitNode so endpoints on lifelines can be dragged
+        if (ed.SelEdges.Count == 1)
         {
-            var sel = ed.Current.Node(ed.SelNodes.First());
-            string h = HitHandle(w, sel);
-            if (h != null) { ed.Begin(); drag = new DragState { Mode = "resize", Node = sel, Handle = h, StartWorld = w }; drag.Orig[sel.Id] = (sel.X, sel.Y); drag.OrigW = sel.W; drag.OrigH = sel.H; return; }
-            string port = HitPort(w, sel);
-            if (port != null) { StartConnect(sel, Catalog.Diagrams[ed.Current.Kind].Quick, w); return; }
+            var selEdge = ed.Current.Edge(ed.SelEdges.First());
+            if (selEdge != null)
+            {
+                var p = Geo.BuildEdgePath(selEdge, ed.Current, Settings.FontSize);
+                double tol = 9 / Zoom;
+                if (p.Points.Count > 0 && (w - p.StartTip).Length < tol) { ed.Begin(); drag = new DragState { Mode = "reconnect", Edge = selEdge, Handle = "start", StartWorld = w }; return; }
+                if (p.Points.Count > 0 && (w - p.EndTip).Length < tol) { ed.Begin(); drag = new DragState { Mode = "reconnect", Edge = selEdge, Handle = "end", StartWorld = w }; return; }
+                if (p.Points.Count >= 2 && !(ed.Current.Kind == DiagramKind.Sequence && selEdge.IsMessage))
+                {
+                    var mid = p.Points.Count == 4
+                        ? new Point((p.Points[1].X + p.Points[2].X) / 2, (p.Points[1].Y + p.Points[2].Y) / 2)
+                        : p.Points.Count == 3
+                            ? p.Points[1]
+                            : new Point((p.Points[0].X + p.Points[1].X) / 2, (p.Points[0].Y + p.Points[1].Y) / 2);
+                    if ((w - mid).Length < tol) { ed.Begin(); drag = new DragState { Mode = "bend", Edge = selEdge, StartWorld = w, OrigBend = selEdge.BendOffset }; return; }
+                }
+            }
+        }
+
+        // 2. Check activation rectangle top/bottom edges before selecting the whole lifeline
+        if (HitActivationEdge(w, out var actLifeline, out var hitAct, out var actSide))
+        {
+            ed.SelectOnly(actLifeline);
+            ed.Begin();
+            drag = new DragState { Mode = "activation", Node = actLifeline, Act = hitAct, Handle = actSide, StartWorld = w, OrigY = actSide == "top" ? hitAct.Start : hitAct.End };
+            return;
         }
         if (node != null && (node.Kind is NodeKind.Port or NodeKind.ProvidedInterface or NodeKind.RequiredInterface))
         {
@@ -292,8 +332,12 @@ public class DiagramCanvas : FrameworkElement
                 {
                     var b = Geo.Bounds(n, Settings.FontSize);
                     foreach (var c in ed.Current.Nodes)
-                        if (c != n && !ed.SelNodes.Contains(c.Id) && string.IsNullOrEmpty(c.AttachParentId) && b.Contains(new Point(c.X + c.W / 2, c.Y + c.H / 2)))
+                    {
+                        if (c == n || ed.SelNodes.Contains(c.Id) || !string.IsNullOrEmpty(c.AttachParentId)) continue;
+                        if (n.Kind == NodeKind.Fragment && c.Kind is NodeKind.Lifeline or NodeKind.Fragment) continue;
+                        if (b.Contains(new Point(c.X + c.W / 2, c.Y + c.H / 2)))
                         { drag.Contained.Add(c); drag.Orig[c.Id] = (c.X, c.Y); }
+                    }
                     if (n.Kind == NodeKind.Fragment)
                         foreach (var m in ed.Current.Edges.Where(x => x.IsMessage))
                         {
@@ -367,6 +411,11 @@ public class DiagramCanvas : FrameworkElement
 
         if (drag == null)
         {
+            if (ed.Tool.Mode == ToolMode.Select && HitActivationEdge(w, out _, out _, out _))
+                Cursor = Cursors.SizeNS;
+            else
+                UpdateCursor();
+
             var h = HitNode(w)?.Id;
             if (h != hover) { hover = h; InvalidateVisual(); }
             if (ed.Tool.Mode == ToolMode.Place) InvalidateVisual();
@@ -541,6 +590,22 @@ public class DiagramCanvas : FrameworkElement
                     n.AttachParentId = null;
                     break;
                 }
+            case "activation":
+                {
+                    double ny = drag.OrigY + (w.Y - drag.StartWorld.Y);
+                    if (drag.Handle == "bottom")
+                    {
+                        drag.Act.End = Math.Max(drag.Act.Start + 14, ny);
+                        // Keep linked reply message aligned with the bottom of the activation
+                        var replyMsg = ed.Current.Edges.FirstOrDefault(x => x.Kind == EdgeKind.MessageReply && x.SourceId == drag.Node.Id && Math.Abs(x.Y - drag.OrigY) < 6);
+                        if (replyMsg != null) replyMsg.Y = drag.Act.End;
+                    }
+                    else
+                    {
+                        drag.Act.Start = Math.Min(drag.Act.End - 14, ny);
+                    }
+                    break;
+                }
         }
         InvalidateVisual();
     }
@@ -552,7 +617,13 @@ public class DiagramCanvas : FrameworkElement
         var w = ToWorld(e.GetPosition(this));
         switch (drag.Mode)
         {
-            case "move": case "resize": case "bend": case "label": case "message": case "sep":
+            case "move":
+            case "resize":
+            case "bend":
+            case "label":
+            case "message":
+            case "sep":
+            case "activation":
                 if (drag.Moved) ed.Commit("Edit"); else ed.CancelPending();
                 break;
             case "attach":
