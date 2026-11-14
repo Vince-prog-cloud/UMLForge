@@ -1,27 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <UseWPF>true</UseWPF>
-    <Nullable>disable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <LangVersion>latest</LangVersion>
-    <AssemblyName>UmlForge</AssemblyName>
-    <RootNamespace>UmlForge</RootNamespace>
-    <Version>1.0.0</Version>
-    <Product>UmlForge</Product>
-    <Description>UML 2.5 modeling studio for Windows</Description>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-  </PropertyGroup>
-  <ItemGroup>
-    <Page Remove="App.xaml" />
-    <Page Remove="MainWindow.xaml" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="App.xaml" />
-    <None Include="MainWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </None>
-  </ItemGroup>
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<UseWPF>true</UseWPF>
+		<Nullable>disable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<LangVersion>latest</LangVersion>
+		<AssemblyName>UmlForge</AssemblyName>
+		<RootNamespace>UmlForge</RootNamespace>
+		<Version>1.0.0</Version>
+		<Product>UmlForge</Product>
+		<Description>UML 2.5 modeling studio for Windows</Description>
+		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+	</PropertyGroup>
 </Project>

@@ -27,12 +27,19 @@ public class DiagramCanvas : FrameworkElement
     class DragState
     {
         public string Mode; public Point StartWorld, StartScreen;
-        public UmlNode Node; public UmlEdge Edge; public string Handle, Port;
+        public UmlNode Node; public UmlEdge Edge; public string Handle;
         public Dictionary<string, (double x, double y)> Orig = new();
+        public Dictionary<string, double> OrigYMap = new();
         public List<UmlNode> Contained = new();
         public List<UmlEdge> ContainedMsgs = new();
-        public bool Moved; public double OrigBend, OrigLdx, OrigLdy, OrigY, OrigActEnd;
-        public Activation Act; public int SepIndex; public UmlNode ReconnectTarget;
+        public List<(Point a, Point b)> Guides = new();
+        public bool Moved;
+        public double OrigBend, OrigLdx, OrigLdy, OrigY, OrigW, OrigH;
+        public int SepIndex; public UmlNode ReconnectTarget;
+        public EdgeKind ConnectKind;
+        public Point PreviewPoint;
+        public bool PreviewValid;
+        public Rect? Marquee;
     }
 
     public DiagramCanvas(Editor ed, AppSettings settings)
@@ -106,7 +113,7 @@ public class DiagramCanvas : FrameworkElement
         dc.DrawRectangle(theme.Paper, null, new Rect(0, 0, ActualWidth, ActualHeight));
         if (ed.Current == null) return;
         SyncAttached();
-        dc.PushTransform(new TransformGroup { Children = { new TranslateTransform(PanX, PanY), new ScaleTransform(Zoom, Zoom) } });
+        dc.PushTransform(new TransformGroup { Children = { new ScaleTransform(Zoom, Zoom), new TranslateTransform(PanX, PanY) } });
         if (Settings.Grid)
         {
             var v = VisibleWorld; double g = Settings.GridSize;
@@ -618,7 +625,6 @@ public class DiagramCanvas : FrameworkElement
         e.Handled = true;
     }
 
-    protected override void OnMouseLeftButtonDown2() { } // placeholder removed
     protected override void OnMouseDown(MouseButtonEventArgs e)
     {
         if (e.ChangedButton == MouseButton.Middle)
@@ -631,8 +637,6 @@ public class DiagramCanvas : FrameworkElement
         base.OnMouseUp(e);
     }
 
-    // double click
-    protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e, bool dummy) { }
     protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2)

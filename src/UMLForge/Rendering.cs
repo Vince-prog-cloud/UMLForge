@@ -39,6 +39,7 @@ public class RenderState
     public Theme Theme; public double FontSize = 13, Zoom = 1, GridSize = 20;
     public bool Grid, Shadows;
     public HashSet<string> SelNodes = new(), SelEdges = new();
+    public HashSet<string> Contents = new(); // <-- ADD THIS
     public string HoverNode;
     public List<(Point a, Point b)> Guides = new();
     public Rect? Marquee;
@@ -71,7 +72,7 @@ public class Renderer
         var ft = new FormattedText(s, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
             new Typeface(Geo.Face.FontFamily, italic ? FontStyles.Italic : FontStyles.Normal, bold ? FontWeights.SemiBold : FontWeights.Normal, FontStretches.Normal),
             size, brush, Geo.Dpi);
-        if (underline) ft.TextDecorations = TextDecorations.Underline;
+        if (underline) ft.SetTextDecorations(TextDecorations.Underline);
         double w = ft.Width;
         double xx = align == "center" ? x - w / 2 : align == "right" ? x - w : x;
         dc.DrawText(ft, new Point(xx, y));
@@ -296,8 +297,6 @@ public class Renderer
     void AttachStem(UmlNode n, Rect b, out Point outer)
     {
         outer = Geo.Center(b);
-        if (string.IsNullOrEmpty(n.AttachParentId)) return;
-        var parent = st.Badges != null ? null : null; // stem drawn from stored geometry
     }
 
     void Lollipop(UmlNode n, Rect b)

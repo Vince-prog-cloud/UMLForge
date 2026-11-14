@@ -7,6 +7,8 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using Path = System.Windows.Shapes.Path;
+using WinVisibility = System.Windows.Visibility;
 
 namespace UmlForge;
 
@@ -22,6 +24,7 @@ public partial class MainWindow : Window
     Action<string> inlineCommit;
     static object clipboardData;
     List<Issue> issues = new();
+
 
     public MainWindow()
     {
@@ -64,11 +67,11 @@ public partial class MainWindow : Window
         BuildExplorer(); BuildTabs(); BuildPalette();
         UndoBtn.IsEnabled = Editor.CanUndo; RedoBtn.IsEnabled = Editor.CanUndo && Editor.CanRedo || Editor.CanRedo;
         RedoBtn.IsEnabled = Editor.CanRedo;
-        EmptyHint.Visibility = Editor.Current == null || Editor.Current.Nodes.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        EmptyHint.Visibility = Editor.Current == null || Editor.Current.Nodes.Count == 0 ? WinVisibility.Visible : WinVisibility.Collapsed;
         canvas.InvalidateVisual();
         autosaveTimer.Stop(); autosaveTimer.Start();
         validateTimer.Stop(); validateTimer.Start();
-        Title = $"UmlForge — {Editor.Project.Name}{(Editor.Dirty ? " •" : "")}{(currentFile.Length > 0 ? "  [" + Path.GetFileName(currentFile) + "]" : "")}";
+        Title = $"UmlForge — {Editor.Project.Name}{(Editor.Dirty ? " •" : "")}{(currentFile.Length > 0 ? "  [" + System.IO.Path.GetFileName(currentFile) + "]" : "")}";
         if (ProjectNameBox.Text != Editor.Project.Name && !ProjectNameBox.IsFocused) ProjectNameBox.Text = Editor.Project.Name;
     }
     void OnSelectionChanged()
@@ -88,7 +91,7 @@ public partial class MainWindow : Window
         NewProjectMenu.Click += (_, _) => NewProject();
         ResetSampleMenu.Click += (_, _) => { if (MessageBox.Show("Replace the current project with the sample library model?", "UmlForge", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) { Editor.Project = Seed.Build(); currentFile = ""; canvas.Fit(); } };
         ExitMenu.Click += (_, _) => Close();
-        ExportBtn.Click += (_, _) => ExportBtn.ContextMenu = BuildExportMenu(); ExportBtn.Click += (_, _) => ExportBtn.ContextMenu.IsOpen = true;
+        ExportBtn.Click += (_, _) => { ExportBtn.ContextMenu = BuildExportMenu(); ExportBtn.ContextMenu.IsOpen = true; };
         ExportPngMenu.Click += (_, _) => ExportPng(); ExportXmiMenu.Click += (_, _) => ExportXmi();
         DupMenu.Click += (_, _) => Editor.DuplicateSelection();
         DeleteMenu.Click += (_, _) => Editor.DeleteSelection();
@@ -152,25 +155,35 @@ public partial class MainWindow : Window
     void SetPaper(PaperMode m) { settings.Paper = m; canvas.RefreshTheme(); ProjectStore.SaveSettings(settings); }
 
     // ---------------- tabs ----------------
+    bool buildingTabs;
     void BuildTabs()
     {
-        DiagramTabs.Items.Clear();
-        foreach (var d in Editor.Open)
+        if (buildingTabs) return;
+        buildingTabs = true;
+        try
         {
-            var sp = new StackPanel { Orientation = Orientation.Horizontal };
-            sp.Children.Add(new Path { Data = Catalog.Icon(d.Kind.ToString()), Stroke = new SolidColorBrush(Color.FromRgb(143, 161, 192)), StrokeThickness = 1.5, Width = 14, Height = 14, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
-            sp.Children.Add(new TextBlock { Text = d.Name, VerticalAlignment = VerticalAlignment.Center });
-            var close = new Button { Content = "✕", FontSize = 9, Padding = new Thickness(4, 1, 4, 1), Margin = new Thickness(8, 0, 0, 0), Background = Brushes.Transparent, BorderThickness = new Thickness(0) };
-            var dd = d;
-            close.Click += (_, _) => { Editor.Open.Remove(dd); if (Editor.Current == dd) Editor.Current = Editor.Open.FirstOrDefault(); BuildTabs(); };
-            sp.Children.Add(close);
-            var tab = new TabItem { Header = sp, Tag = dd };
-            tab.MouseDoubleClick += (_, _) => RenameDiagram(dd);
-            DiagramTabs.Items.Add(tab);
+            DiagramTabs.SelectionChanged -= Tabs_SelectionChanged;
+            DiagramTabs.Items.Clear();
+            foreach (var d in Editor.Open)
+            {
+                var sp = new StackPanel { Orientation = Orientation.Horizontal };
+                sp.Children.Add(new Path { Data = Catalog.Icon(d.Kind.ToString()), Stroke = new SolidColorBrush(Color.FromRgb(143, 161, 192)), StrokeThickness = 1.5, Width = 14, Height = 14, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
+                sp.Children.Add(new TextBlock { Text = d.Name, VerticalAlignment = VerticalAlignment.Center });
+                var close = new Button { Content = "✕", FontSize = 9, Padding = new Thickness(4, 1, 4, 1), Margin = new Thickness(8, 0, 0, 0), Background = Brushes.Transparent, BorderThickness = new Thickness(0) };
+                var dd = d;
+                close.Click += (_, _) => { Editor.Open.Remove(dd); if (Editor.Current == dd) Editor.Current = Editor.Open.FirstOrDefault(); BuildTabs(); };
+                sp.Children.Add(close);
+                var tab = new TabItem { Header = sp, Tag = dd };
+                tab.MouseDoubleClick += (_, _) => RenameDiagram(dd);
+                DiagramTabs.Items.Add(tab);
+            }
+            DiagramTabs.SelectedItem = DiagramTabs.Items.Cast<TabItem>().FirstOrDefault(t => t.Tag == Editor.Current);
+            DiagramTabs.SelectionChanged += Tabs_SelectionChanged;
         }
-        DiagramTabs.SelectedItem = DiagramTabs.Items.Cast<TabItem>().FirstOrDefault(t => t.Tag == Editor.Current);
-        DiagramTabs.SelectionChanged -= Tabs_SelectionChanged;
-        DiagramTabs.SelectionChanged += Tabs_SelectionChanged;
+        finally
+        {
+            buildingTabs = false;
+        }
     }
     void Tabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -184,7 +197,7 @@ public partial class MainWindow : Window
         string q = SearchBox.Text?.Trim().ToLowerInvariant() ?? "";
         if (q.Length > 0)
         {
-            ExplorerTree.Visibility = Visibility.Collapsed; SearchResults.Visibility = Visibility.Visible;
+            ExplorerTree.Visibility = WinVisibility.Collapsed; SearchResults.Visibility = WinVisibility.Visible;
             SearchResults.Items.Clear();
             foreach (var d in Editor.Project.AllDiagrams)
             {
@@ -196,7 +209,7 @@ public partial class MainWindow : Window
             SearchResults.SelectionChanged -= SearchResults_Sel; SearchResults.SelectionChanged += SearchResults_Sel;
             return;
         }
-        ExplorerTree.Visibility = Visibility.Visible; SearchResults.Visibility = Visibility.Collapsed;
+        ExplorerTree.Visibility = WinVisibility.Visible; SearchResults.Visibility = WinVisibility.Collapsed;
         ExplorerTree.Items.Clear();
         foreach (var pkg in Editor.Project.Packages)
         {

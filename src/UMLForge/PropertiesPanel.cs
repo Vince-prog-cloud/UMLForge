@@ -87,16 +87,39 @@ public class PropertiesPanel : ScrollViewer
         Label(label);
         var dg = new DataGrid
         {
-            ItemsSource = items, AutoGenerateColumns = false, CanUserAddRows = true, CanUserDeleteRows = true,
-            HeadersVisibility = DataGridHeadersVisibility.Column, MaxHeight = 220, Margin = new Thickness(0, 2, 0, 0)
+            ItemsSource = items,
+            AutoGenerateColumns = false,
+            CanUserAddRows = true,
+            CanUserDeleteRows = true,
+            HeadersVisibility = DataGridHeadersVisibility.Column,
+            MaxHeight = 220,
+            Margin = new Thickness(0, 2, 0, 0)
         };
         foreach (var (h, p, w) in cols)
             dg.Columns.Add(new DataGridTextColumn { Header = h, Binding = new Binding(p), Width = w > 0 ? w : double.NaN });
+
+        void CommitGrid()
+        {
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
+            {
+                if (dg.Items is System.ComponentModel.IEditableCollectionView view && (view.IsEditingItem || view.IsAddingNew))
+                    return;
+                ed.Commit("Edit " + label);
+                Editing = false;
+            });
+        }
+
         dg.BeginningEdit += (_, _) => { Editing = true; ed.Begin(); };
-        dg.CellEditEnding += (_, _) => { Dispatcher.BeginInvoke(() => { Editing = false; ed.Commit("Edit " + label); }); };
-        dg.InitializingNewItem += (_, _) => ed.Begin();
+        dg.CellEditEnding += (_, _) => CommitGrid();
+        dg.RowEditEnding += (_, _) => CommitGrid();
+        dg.InitializingNewItem += (_, _) => { Editing = true; ed.Begin(); };
         dg.PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Delete) ed.Begin(); };
-        items.CollectionChanged += (_, _) => { if (ed.CanUndo || true) ed.Commit("Edit " + label); };
+        items.CollectionChanged += (_, _) =>
+        {
+            if (dg.Items is System.ComponentModel.IEditableCollectionView view && (view.IsEditingItem || view.IsAddingNew))
+                return;
+            ed.Commit("Edit " + label);
+        };
         root.Children.Add(dg);
     }
 

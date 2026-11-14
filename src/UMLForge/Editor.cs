@@ -45,6 +45,7 @@ public class Editor
 
     public string Snapshot() => JsonSerializer.Serialize(Project, Json);
     public void Begin() { pending ??= Snapshot(); }
+    public void CancelPending() { pending = null; }
     public void Commit(string label)
     {
         if (pending == null) return;
