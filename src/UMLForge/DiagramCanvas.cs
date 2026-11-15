@@ -206,7 +206,8 @@ public class DiagramCanvas : FrameworkElement
     {
         if (n == null || Catalog.IsFixed(n.Kind)) return null;
         var b = Geo.Bounds(n, Settings.FontSize);
-        double tol = 7 / Zoom;
+        b.Inflate(4 / Zoom, 4 / Zoom);
+        double tol = 9 / Zoom;
         var names = new[] { "nw", "n", "ne", "e", "se", "s", "sw", "w" };
         int i = 0;
         foreach (var h in Renderer.Handles(b)) { if ((w - h).Length < tol) return names[i]; i++; }
@@ -411,7 +412,20 @@ public class DiagramCanvas : FrameworkElement
 
         if (drag == null)
         {
-            if (ed.Tool.Mode == ToolMode.Select && HitActivationEdge(w, out _, out _, out _))
+            string handleHover = (ed.Tool.Mode == ToolMode.Select && ed.SelNodes.Count == 1)
+                ? HitHandle(w, ed.Current.Node(ed.SelNodes.First()))
+                : null;
+            if (handleHover != null)
+            {
+                Cursor = handleHover switch
+                {
+                    "nw" or "se" => Cursors.SizeNWSE,
+                    "ne" or "sw" => Cursors.SizeNESW,
+                    "n" or "s" => Cursors.SizeNS,
+                    _ => Cursors.SizeWE
+                };
+            }
+            else if (ed.Tool.Mode == ToolMode.Select && HitActivationEdge(w, out _, out _, out _))
                 Cursor = Cursors.SizeNS;
             else
                 UpdateCursor();
@@ -505,10 +519,10 @@ public class DiagramCanvas : FrameworkElement
                 {
                     var n = drag.Node; var d = w - drag.StartWorld;
                     double x = drag.Orig[n.Id].x, y = drag.Orig[n.Id].y, ww = drag.OrigW, hh = drag.OrigH;
-                    if (drag.Handle.Contains('e')) ww = Math.Max(40, ww + d.X);
-                    if (drag.Handle.Contains('s')) hh = Math.Max(24, hh + d.Y);
-                    if (drag.Handle.Contains('w')) { ww = Math.Max(40, ww - d.X); x = drag.Orig[n.Id].x + d.X; }
-                    if (drag.Handle.Contains('n')) { hh = Math.Max(24, hh - d.Y); y = drag.Orig[n.Id].y + d.Y; }
+                    if (drag.Handle.Contains('e')) ww = Math.Max(40, drag.OrigW + d.X);
+                    if (drag.Handle.Contains('s')) hh = Math.Max(24, drag.OrigH + d.Y);
+                    if (drag.Handle.Contains('w')) { ww = Math.Max(40, drag.OrigW - d.X); x = drag.Orig[n.Id].x + (drag.OrigW - ww); }
+                    if (drag.Handle.Contains('n')) { hh = Math.Max(24, drag.OrigH - d.Y); y = drag.Orig[n.Id].y + (drag.OrigH - hh); }
                     n.X = x; n.Y = y; n.W = ww; n.H = hh;
                     break;
                 }

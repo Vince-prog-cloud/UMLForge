@@ -81,7 +81,6 @@ public class Renderer
     {
         var size = Geo.Measure(l.Text, l.Size, l.Bold, l.Italic);
         double x = l.Align == "middle" ? l.X - size.Width / 2 : l.Align == "end" ? l.X - size.Width : l.X;
-        dc.DrawRectangle(t.Paper, null, new Rect(x - 2, l.Y, size.Width + 4, size.Height));
         Text(l.Text, l.X, l.Y, t.Ink, l.Size, l.Bold, l.Italic, false, l.Align);
     }
     Brush FillOf(UmlNode n)
@@ -103,6 +102,7 @@ public class Renderer
         switch (n.Kind)
         {
             case NodeKind.Class or NodeKind.Interface or NodeKind.Enumeration or NodeKind.DataType or NodeKind.Object: Classifier(n, b); break;
+            case NodeKind.Fork: Rect(b, t.Mode == PaperMode.Blueprint ? t.Ink : Brushes.Black, null); break;
             case NodeKind.Actor: Actor(n, b); break;
             case NodeKind.UseCase: Ellipse(Geo.Center(b), b.Width / 2, b.Height / 2, FillOf(n), t.InkPen); CenteredWrap(n.Name, b, fs); break;
             case NodeKind.Boundary: Boundary(n, b); break;
@@ -122,7 +122,6 @@ public class Renderer
                 Poly(new[] { new Point(b.X + b.Width / 2, b.Y), new Point(b.Right, b.Y + b.Height / 2), new Point(b.X + b.Width / 2, b.Bottom), new Point(b.X, b.Y + b.Height / 2) }, FillOf(n), t.InkPen);
                 if (!string.IsNullOrWhiteSpace(n.Name)) Text(n.Name, b.Right + 6, b.Y + b.Height / 2 - fs / 2, t.Ink, fs - 1);
                 break;
-            case NodeKind.Fork: Rect(b, t.Ink, null); break;
             case NodeKind.SendSignal:
                 Poly(new[] { new Point(b.X, b.Y), new Point(b.Right - 14, b.Y), new Point(b.Right, b.Y + b.Height / 2), new Point(b.Right - 14, b.Bottom), new Point(b.X, b.Bottom) }, FillOf(n), t.InkPen);
                 Text(n.Name, b.X + (b.Width - 14) / 2, b.Y + b.Height / 2 - fs / 2, t.Ink, fs, false, false, false, "center"); break;
@@ -384,23 +383,35 @@ public class Renderer
     {
         var p = Geo.BuildEdgePath(e, d, fs);
         if (p.Points.Count < 2) return;
+        var sNode = d.Node(e.SourceId);
+        var tNode = d.Node(e.TargetId);
+        bool srcPin = e.Kind == EdgeKind.ObjectFlow && sNode?.Kind == NodeKind.Action;
+        bool tgtPin = e.Kind == EdgeKind.ObjectFlow && tNode?.Kind == NodeKind.Action;
+
+        var startTip = srcPin ? Geo.Add(p.StartTip, p.StartDir * 5) : p.StartTip;
+        var endTip = tgtPin ? Geo.Add(p.EndTip, p.EndDir * -5) : p.EndTip;
+
         var pen = p.Dashed ? t.DashPen : t.InkPen;
         double startTrim = Geo.MarkerLen(p.StartMarker), endTrim = Geo.MarkerLen(p.EndMarker);
         var pts = new List<Point>(p.Points);
-        pts[0] = Geo.Add(pts[0], p.StartDir * startTrim);
-        pts[^1] = Geo.Add(pts[^1], p.EndDir * -endTrim);
+        pts[0] = Geo.Add(startTip, p.StartDir * startTrim);
+        pts[^1] = Geo.Add(endTip, p.EndDir * -endTrim);
         for (int i = 0; i < pts.Count - 1; i++) Line(pts[i], pts[i + 1], pen);
-        DrawMarker(p.StartMarker, p.StartTip, p.StartDir);
-        DrawMarker(p.EndMarker, p.EndTip, p.EndDir);
+
+        if (srcPin) Rect(new Rect(p.StartTip.X - 5, p.StartTip.Y - 5, 10, 10), t.NodeFill, t.InkPen);
+        if (tgtPin) Rect(new Rect(p.EndTip.X - 5, p.EndTip.Y - 5, 10, 10), t.NodeFill, t.InkPen);
+
+        DrawMarker(p.StartMarker, startTip, p.StartDir);
+        DrawMarker(p.EndMarker, endTip, p.EndDir);
         if (e.Kind is EdgeKind.Association or EdgeKind.Aggregation or EdgeKind.Composition)
         {
-            if (e.SourceNavigable && e.Kind == EdgeKind.Association) DrawMarker(MarkerKind.Open, p.StartTip, p.StartDir * -1);
-            if (e.TargetNavigable) DrawMarker(MarkerKind.Open, p.EndTip, p.EndDir);
+            if (e.SourceNavigable && e.Kind == EdgeKind.Association) DrawMarker(MarkerKind.Open, startTip, p.StartDir * -1);
+            if (e.TargetNavigable) DrawMarker(MarkerKind.Open, endTip, p.EndDir);
         }
         foreach (var l in p.Labels) HaloText(l);
         if (!st.Export && st.Badges.TryGetValue(e.Id, out var sev))
         {
-            var mid = new Point((p.StartTip.X + p.EndTip.X) / 2, (p.StartTip.Y + p.EndTip.Y) / 2);
+            var mid = new Point((startTip.X + endTip.X) / 2, (startTip.Y + endTip.Y) / 2);
             Ellipse(mid, 5, 5, sev == Severity.Error ? t.Invalid : new SolidColorBrush(Color.FromRgb(255, 178, 36)), new Pen(t.Paper, 1.5));
         }
     }

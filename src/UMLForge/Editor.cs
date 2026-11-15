@@ -118,6 +118,7 @@ public class Editor
         if (kind == NodeKind.Fragment) { n.Operands.Add(new FragmentOperand { Guard = "condition", Height = 90 }); n.Operands.Add(new FragmentOperand { Guard = "else", Height = 80 }); }
         if (kind == NodeKind.Partition) { n.Lanes.Add("Lane 1"); n.Lanes.Add("Lane 2"); }
         if (kind == NodeKind.Class) n.Attributes.Add(new UmlAttribute { Name = "attribute", Type = "String" });
+        if (kind == NodeKind.Fork) n.Orientation = "Vertical";
         Begin();
         Current.Nodes.Add(n);
         if (Catalog.IsContainer(kind)) { var list = Current.Nodes.ToList(); Current.Nodes.Remove(n); Current.Nodes.Insert(0, n); }

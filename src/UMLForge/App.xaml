@@ -10,8 +10,26 @@
     <SolidColorBrush x:Key="Muted" Color="#8FA1C0"/>
     <SolidColorBrush x:Key="Blue" Color="#4D8DFF"/>
     <SolidColorBrush x:Key="Cyan" Color="#2BD9E8"/>
+    <Style TargetType="GridSplitter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="GridSplitter">
+            <Border x:Name="bar" Background="{TemplateBinding Background}"/>
+            <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="bar" Property="Background" Value="{StaticResource Blue}"/>
+             </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="bar" Property="Background" Value="{StaticResource Cyan}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-    <Style TargetType="Window">
+        <Style TargetType="Window">
       <Setter Property="Background" Value="{StaticResource Bg}"/>
       <Setter Property="Foreground" Value="{StaticResource Text}"/>
       <Setter Property="FontFamily" Value="Segoe UI"/>

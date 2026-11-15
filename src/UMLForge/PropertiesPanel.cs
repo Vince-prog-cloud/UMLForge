@@ -209,7 +209,15 @@ public class PropertiesPanel : ScrollViewer
         }
         if (n.Kind == NodeKind.Port) ComboField("Direction", "inout", new[] { "in", "out", "inout" }, _ => { });
         if (n.Kind == NodeKind.ObjectNode) TextField("Type", n.Represents, v => n.Represents = v);
-
+        if (n.Kind == NodeKind.Fork)
+        {
+            ComboField("Orientation", n.Orientation == "Horizontal" ? "Horizontal" : "Vertical", new[] { "Vertical", "Horizontal" }, v =>
+            {
+                if (n.Orientation == v) return;
+                n.Orientation = v;
+                (n.W, n.H) = (n.H, n.W);
+            });
+        }
         Label("Geometry");
         var gp = new WrapPanel();
         void Num(string l, double v, Action<double> a)

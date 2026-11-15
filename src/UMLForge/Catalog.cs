@@ -26,7 +26,7 @@ public static class Catalog
         [NodeKind.FlowFinal] = new("Flow Final", 26, 26, Fixed: true),
         [NodeKind.Action] = new("Action", 150, 52, Hint: "Rounded rectangle."),
         [NodeKind.Decision] = new("Decision / Merge", 46, 46, Fixed: true),
-        [NodeKind.Fork] = new("Fork / Join", 90, 8),
+        [NodeKind.Fork] = new("Fork / Join", 8, 90),
         [NodeKind.SendSignal] = new("Send Signal", 140, 50),
         [NodeKind.AcceptSignal] = new("Accept Signal", 140, 50),
         [NodeKind.TimeEvent] = new("Time Event", 34, 44, Fixed: true),
