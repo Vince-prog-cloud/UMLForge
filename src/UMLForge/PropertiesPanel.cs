@@ -129,12 +129,14 @@ public class PropertiesPanel : ScrollViewer
         dg.RowEditEnding += (_, _) => CommitGrid();
         dg.InitializingNewItem += (_, _) => { Editing = true; ed.Begin(); };
         dg.PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Delete) ed.Begin(); };
-        items.CollectionChanged += (_, _) =>
+        System.Collections.Specialized.NotifyCollectionChangedEventHandler onColChanged = (_, _) =>
         {
             if (dg.Items is System.ComponentModel.IEditableCollectionView view && (view.IsEditingItem || view.IsAddingNew))
                 return;
             ed.Commit("Edit " + label);
         };
+        items.CollectionChanged += onColChanged;
+        cleanup.Add(() => items.CollectionChanged -= onColChanged);
         root.Children.Add(dg);
     }
 
@@ -145,15 +147,17 @@ public class PropertiesPanel : ScrollViewer
         void Rebuild()
         {
             sp.Children.Clear();
-            foreach (var item in items.ToList())
+            for (int idx = 0; idx < items.Count; idx++)
             {
+                int rowIndex = idx;
+                string item = items[rowIndex];
                 var row = new DockPanel { Margin = new Thickness(0, 2, 0, 0) };
-                var del = new Button { Content = "✕", Width = 26, Tag = item };
-                del.Click += (_, _) => ed.Mutate(() => items.Remove(item), "Remove");
+                var del = new Button { Content = "✕", Width = 26 };
+                del.Click += (_, _) => ed.Mutate(() => items.RemoveAt(rowIndex), "Remove");
                 DockPanel.SetDock(del, Dock.Right);
                 var tb = new TextBox { Text = item };
                 tb.GotFocus += (_, _) => Editing = true;
-                tb.LostFocus += (_, _) => { Editing = false; int i = items.IndexOf(item); if (i >= 0 && tb.Text != item) ed.Mutate(() => items[i] = tb.Text, "Edit"); };
+                tb.LostFocus += (_, _) => { Editing = false; if (rowIndex < items.Count && tb.Text != items[rowIndex]) ed.Mutate(() => items[rowIndex] = tb.Text, "Edit"); };
                 row.Children.Add(del); row.Children.Add(tb);
                 sp.Children.Add(row);
             }
@@ -274,9 +278,9 @@ public class PropertiesPanel : ScrollViewer
             Label("Target end");
             TextField("Role", e.TargetRole, v => e.TargetRole = v);
             TextField("Multiplicity", e.TargetMultiplicity, v => e.TargetMultiplicity = v);
-            if (e.Kind == EdgeKind.Association)
+            if (e.Kind is EdgeKind.Association or EdgeKind.Aggregation or EdgeKind.Composition)
             {
-                CheckField("Navigable → source", e.SourceNavigable, v => e.SourceNavigable = v);
+                if (e.Kind == EdgeKind.Association) CheckField("Navigable → source", e.SourceNavigable, v => e.SourceNavigable = v);
                 CheckField("Navigable → target", e.TargetNavigable, v => e.TargetNavigable = v);
                 CheckField("Show reading direction ▶", e.ShowDirection, v => e.ShowDirection = v);
             }

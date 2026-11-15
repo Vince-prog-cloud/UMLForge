@@ -95,7 +95,7 @@ public partial class MainWindow : Window
         ExportPngMenu.Click += (_, _) => ExportPng(); ExportXmiMenu.Click += (_, _) => ExportXmi();
         DupMenu.Click += (_, _) => Editor.DuplicateSelection();
         DeleteMenu.Click += (_, _) => Editor.DeleteSelection();
-        SelectAllMenu.Click += (_, _) => { foreach (var n in Editor.Current.Nodes) Editor.SelNodes.Add(n.Id); Editor.NotifySelection(); };
+        SelectAllMenu.Click += (_, _) => { if (Editor.Current == null) return; foreach (var n in Editor.Current.Nodes) Editor.SelNodes.Add(n.Id); Editor.NotifySelection(); };
         GridMenu.Click += (_, _) => { settings.Grid = GridMenu.IsChecked; canvas.InvalidateVisual(); };
         SnapMenu.Click += (_, _) => settings.Snap = SnapMenu.IsChecked;
         GuidesMenu.Click += (_, _) => settings.Guides = GuidesMenu.IsChecked;
@@ -132,6 +132,7 @@ public partial class MainWindow : Window
         };
         ChecksList.MouseDoubleClick += (_, _) =>
         {
+            if (Editor.Current == null) return;
             if (ChecksList.SelectedItem is Issue it && it.ElementId.Length > 0)
             {
                 var n = Editor.Current.Node(it.ElementId);
@@ -448,14 +449,14 @@ public partial class MainWindow : Window
             case Key.Y when ctrl: Editor.Redo(); e.Handled = true; break;
             case Key.S when ctrl: SaveProject(false); e.Handled = true; break;
             case Key.O when ctrl: OpenProject(); e.Handled = true; break;
-            case Key.A when ctrl: foreach (var n in Editor.Current.Nodes) Editor.SelNodes.Add(n.Id); Editor.NotifySelection(); e.Handled = true; break;
+            case Key.A when ctrl: if (Editor.Current == null) return; foreach (var n in Editor.Current.Nodes) Editor.SelNodes.Add(n.Id); Editor.NotifySelection(); e.Handled = true; break;
             case Key.D when ctrl: Editor.DuplicateSelection(); e.Handled = true; break;
             case Key.C when ctrl: CopySelection(); e.Handled = true; break;
             case Key.X when ctrl: CopySelection(); Editor.DeleteSelection(); e.Handled = true; break;
             case Key.V when ctrl: Paste(); e.Handled = true; break;
             case Key.V: Editor.SetTool(ToolSpec.Select); MarkTool(); break;
             case Key.H: Editor.SetTool(ToolSpec.Pan); MarkTool(); break;
-            case Key.F2: if (Editor.SelNodes.Count == 1) canvas.RequestRename(Editor.Current.Node(Editor.SelNodes.First())); break;
+            case Key.F2: if (Editor.Current == null) return; if (Editor.SelNodes.Count == 1) canvas.RequestRename(Editor.Current.Node(Editor.SelNodes.First())); break;
             case Key.F1: Dialogs.Help(this); e.Handled = true; break;
             case Key.D0 when ctrl: canvas.Fit(); e.Handled = true; break;
             case Key.D1 when ctrl: canvas.SetZoom(1); e.Handled = true; break;
@@ -478,6 +479,7 @@ public partial class MainWindow : Window
     }
     void CopySelection()
     {
+        if (Editor.Current == null) return;
         if (Editor.SelNodes.Count == 0) return;
         var nodes = Editor.Current.Nodes.Where(n => Editor.SelNodes.Contains(n.Id)).ToList();
         var edges = Editor.Current.Edges.Where(e => Editor.SelNodes.Contains(e.SourceId) && Editor.SelNodes.Contains(e.TargetId)).ToList();
@@ -486,6 +488,7 @@ public partial class MainWindow : Window
     }
     void Paste()
     {
+        if (Editor.Current == null) return;
         if (clipboardData is not (List<UmlNode> nodes, List<UmlEdge> edges)) return;
         Editor.Mutate(() =>
         {

@@ -207,6 +207,15 @@ public class DiagramCanvas : FrameworkElement
             var p = Geo.BuildEdgePath(e, ed.Current, Settings.FontSize);
             for (int i = 0; i < p.Points.Count - 1; i++)
                 if (Geo.DistToSegment(w, p.Points[i], p.Points[i + 1]) < tol) return e;
+            if (ed.Current.Kind == DiagramKind.Sequence && e.IsMessage)
+            {
+                foreach (var l in p.Labels)
+                {
+                    var sz = Geo.Measure(l.Text, l.Size, l.Bold, l.Italic);
+                    var r = new Rect(l.X - sz.Width / 2 - 4, l.Y - 2, sz.Width + 8, sz.Height + 4);
+                    if (r.Contains(w)) return e;
+                }
+            }
         }
         return null;
     }

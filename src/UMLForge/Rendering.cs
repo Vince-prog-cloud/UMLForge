@@ -499,14 +499,7 @@ public class Renderer
         }
         foreach (var (a, b) in st.Guides) Line(a, b, t.GuidePen);
         if (st.Marquee is Rect m) dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(28, 62, 123, 250)), t.SelPen, m);
-        if (st.PreviewSource != null)
-        {
-            var a = Geo.Anchor(st.PreviewSource, st.PreviewPoint, fs);
-            var pen = st.PreviewValid ? t.PreviewPen : t.BadPen;
-            Line(a, st.PreviewPoint, pen);
-            var dir = Geo.Norm(st.PreviewPoint - a);
-            DrawMarker(Catalog.Edges[st.PreviewEdge].End, st.PreviewPoint, dir);
-        }
+
         if (st.GhostNode is NodeKind gk)
         {
             var def = Catalog.Nodes[gk];
