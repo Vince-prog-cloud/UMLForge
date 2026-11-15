@@ -127,12 +127,13 @@ public class Editor
         return n;
     }
 
-    public (bool ok, string reason) TryConnect(EdgeKind kind, UmlNode s, UmlNode t)
+    public (bool ok, string reason) TryConnect(EdgeKind kind, UmlNode s, UmlNode t, double? atY = null)
     {
         if (Current == null) return (false, "No active diagram.");
         var (ok, reason) = Catalog.CanConnect(kind, s, t, Current.Kind);
         if (!ok) return (false, reason);
-        if (Current.Edges.Any(e => e.Kind == kind && e.SourceId == s.Id && e.TargetId == t.Id && kind != EdgeKind.Association))
+        if (Current.Kind != DiagramKind.Sequence &&
+            Current.Edges.Any(e => e.Kind == kind && e.SourceId == s.Id && e.TargetId == t.Id && kind != EdgeKind.Association))
             return (false, "That relationship already exists.");
         if (kind == EdgeKind.Generalization && CreatesCycle(s, t)) return (false, "Generalization cycle detected.");
 
@@ -142,10 +143,26 @@ public class Editor
         UmlEdge reply = null;
         if (Current.Kind == DiagramKind.Sequence && e.IsMessage)
         {
-            double y = Math.Max(s.Y + 36, t.Y + 36) + 60;
-            var existing = Current.Edges.Where(x => x.IsMessage).ToList();
-            if (existing.Count > 0) y = existing.Max(x => x.Y) + 44;
-            e.Y = y; e.Name = "message()";
+            double minY = Math.Max(s.Y + 36, t.Y + 36) + 16;
+            double y;
+            if (atY.HasValue)
+            {
+                y = Math.Max(minY, atY.Value);
+            }
+            else
+            {
+                var existing = Current.Edges.Where(x => x.IsMessage).ToList();
+                y = existing.Count > 0 ? existing.Max(x => x.Y) + 44 : minY + 30;
+            }
+
+            if (kind == EdgeKind.MessageCreate)
+            {
+                t.Y = Math.Max(20, y - 18);
+                y = t.Y + 18;
+            }
+
+            e.Y = y;
+            e.Name = "message()";
 
             double bottomY = y;
             if (kind == EdgeKind.MessageSync && s != t)
@@ -154,20 +171,21 @@ public class Editor
                 t.Activations.Add(new Activation { Start = y, End = bottomY, MessageId = e.Id });
                 reply = new UmlEdge { Kind = EdgeKind.MessageReply, SourceId = t.Id, TargetId = s.Id, Y = bottomY, Name = "return" };
             }
-            if (kind == EdgeKind.MessageSync && s == t)
+            else if (kind == EdgeKind.MessageSync && s == t)
             {
                 bottomY = y + 26;
                 s.Activations.Add(new Activation { Start = y, End = bottomY, MessageId = e.Id });
             }
-            if (kind == EdgeKind.MessageReply)
+            else if (kind == EdgeKind.MessageReply)
             {
                 var act = s.Activations.Where(a => a.Start <= y).OrderByDescending(a => a.Start).FirstOrDefault();
                 if (act != null) act.End = y;
             }
-            if (kind == EdgeKind.MessageDelete)
+            else if (kind == EdgeKind.MessageDelete)
+            {
                 foreach (var a in t.Activations) a.End = Math.Min(a.End, y);
+            }
 
-            // Auto-extend lifelines if messages go near the bottom
             s.H = Math.Max(s.H, bottomY - s.Y + 50);
             t.H = Math.Max(t.H, bottomY - t.Y + 50);
         }

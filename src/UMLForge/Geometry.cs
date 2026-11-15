@@ -334,7 +334,7 @@ public static class Geo
         }
         var label = num + (string.IsNullOrWhiteSpace(e.Name) ? "message()" : e.Name);
         double mx = (p.StartTip.X + p.EndTip.X) / 2;
-        p.Labels.Add(new EdgeLabel { X = mx, Y = y - fs - 4, Text = label, Size = fs - 1 });
+        p.Labels.Add(new EdgeLabel { X = mx, Y = y - fs - 4, Text = label, Size = fs - 1, Movable = false });
     }
 
     public static double DistToSegment(Point p, Point a, Point b)

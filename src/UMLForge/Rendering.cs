@@ -43,7 +43,7 @@ public class RenderState
     public string HoverNode;
     public List<(Point a, Point b)> Guides = new();
     public Rect? Marquee;
-    public UmlNode PreviewSource; public Point PreviewPoint; public bool PreviewValid; public EdgeKind PreviewEdge;
+    public UmlNode PreviewSource; public Point PreviewStart, PreviewPoint; public bool PreviewValid; public EdgeKind PreviewEdge;
     public NodeKind? GhostNode; public Point GhostPoint;
     public Dictionary<string, Severity> Badges = new();
     public bool Export;
@@ -476,14 +476,26 @@ public class Renderer
                 dc.DrawRectangle(t.NodeFill, t.SelPen, new Rect(mid.X - hs / 2, mid.Y - hs / 2, hs, hs));
             }
         }
-        if (st.HoverNode != null)
+        if (st.PreviewSource != null)
         {
-            var n = d.Node(st.HoverNode);
-            if (n != null)
+            Point a, bPt;
+            if (d.Kind == DiagramKind.Sequence && st.PreviewSource.Kind == NodeKind.Lifeline)
             {
-                var b = Geo.Bounds(n, fs);
-                foreach (var p in PortPoints(b)) dc.DrawEllipse(t.Selection, new Pen(t.Paper, 1.4 / z), p, 5 / z, 5 / z);
+                double y = Math.Max(st.PreviewSource.Y + 42, st.PreviewStart.Y);
+                int sign = st.PreviewPoint.X >= (st.PreviewSource.X + st.PreviewSource.W / 2) ? 1 : -1;
+                double sx = Geo.ActivationEdge(st.PreviewSource, y, sign);
+                a = new Point(sx, y);
+                bPt = new Point(st.PreviewPoint.X, y);
             }
+            else
+            {
+                a = Geo.Anchor(st.PreviewSource, st.PreviewPoint, fs);
+                bPt = st.PreviewPoint;
+            }
+            var pen = st.PreviewValid ? t.PreviewPen : t.BadPen;
+            Line(a, bPt, pen);
+            var dir = Geo.Norm(bPt - a);
+            DrawMarker(Catalog.Edges[st.PreviewEdge].End, bPt, dir);
         }
         foreach (var (a, b) in st.Guides) Line(a, b, t.GuidePen);
         if (st.Marquee is Rect m) dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(28, 62, 123, 250)), t.SelPen, m);

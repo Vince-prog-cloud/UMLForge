@@ -134,7 +134,7 @@ public class DiagramCanvas : FrameworkElement
         };
         if (drag?.Mode == "connect" && drag.Node != null)
         {
-            rs.PreviewSource = drag.Node; rs.PreviewPoint = drag.PreviewPoint; rs.PreviewValid = drag.PreviewValid; rs.PreviewEdge = drag.ConnectKind;
+            rs.PreviewSource = drag.Node; rs.PreviewStart = drag.StartWorld; rs.PreviewPoint = drag.PreviewPoint; rs.PreviewValid = drag.PreviewValid; rs.PreviewEdge = drag.ConnectKind;
         }
         if (ed.Tool.Mode == ToolMode.Place && drag == null)
         { rs.GhostNode = ed.Tool.Node; rs.GhostPoint = lastMouseWorld; }
@@ -186,6 +186,14 @@ public class DiagramCanvas : FrameworkElement
         for (int i = ed.Current.Nodes.Count - 1; i >= 0; i--)
         {
             var n = ed.Current.Nodes[i];
+            if (n.Kind == NodeKind.Lifeline)
+            {
+                var head = new Rect(n.X, n.Y, n.W, 36);
+                double cx = n.X + n.W / 2;
+                var stem = new Rect(cx - 14, n.Y, 28, n.H);
+                if (head.Contains(w) || stem.Contains(w)) return n;
+                continue;
+            }
             var b = Geo.Bounds(n, Settings.FontSize);
             if (b.Contains(w)) return n;
         }
@@ -351,6 +359,8 @@ public class DiagramCanvas : FrameworkElement
             drag = new DragState { Mode = "activation", Node = actLifeline, Act = hitAct, Handle = actSide, StartWorld = w, OrigY = actSide == "top" ? hitAct.Start : hitAct.End };
             return;
         }
+        if (node != null && Catalog.IsContainer(node.Kind) && HitEdge(w) != null)
+            node = null;
         if (node != null && (node.Kind is NodeKind.Port or NodeKind.ProvidedInterface or NodeKind.RequiredInterface))
         {
             Select(node, e);
@@ -423,8 +433,15 @@ public class DiagramCanvas : FrameworkElement
                 }
             }
             ed.SelectOnly(edge);
-            if (ed.Current.Kind == DiagramKind.Sequence && edge.IsMessage && edge.Kind != EdgeKind.MessageCreate)
-            { ed.Begin(); drag = new DragState { Mode = "message", Edge = edge, StartWorld = w, OrigY = edge.Y }; return; }
+            if (ed.Current.Kind == DiagramKind.Sequence && edge.IsMessage)
+            {
+                double startY = edge.Kind == EdgeKind.MessageCreate
+                    ? (ed.Current.Node(edge.TargetId)?.Y + 18 ?? edge.Y)
+                    : edge.Y;
+                ed.Begin();
+                drag = new DragState { Mode = "message", Edge = edge, StartWorld = w, OrigY = startY };
+                return;
+            }
             ed.Begin();
             drag = new DragState { Mode = "label", Edge = edge, StartWorld = w, OrigLdx = edge.LabelDx, OrigLdy = edge.LabelDy };
             return;
@@ -443,7 +460,7 @@ public class DiagramCanvas : FrameworkElement
 
     void StartConnect(UmlNode source, EdgeKind kind, Point w)
     {
-        drag = new DragState { Mode = "connect", Node = source, ConnectKind = kind, PreviewPoint = w };
+        drag = new DragState { Mode = "connect", Node = source, ConnectKind = kind, StartWorld = w, PreviewPoint = w };
         Hint(Catalog.Edges[kind].Hint);
     }
 
@@ -633,6 +650,13 @@ public class DiagramCanvas : FrameworkElement
                 {
                     var edge = drag.Edge;
                     var s = ed.Current.Node(edge.SourceId); var t = ed.Current.Node(edge.TargetId);
+                    if (edge.Kind == EdgeKind.MessageCreate)
+                    {
+                        double ny = Math.Max(40, drag.OrigY + (w.Y - drag.StartWorld.Y));
+                        edge.Y = ny;
+                        t.Y = ny - 18;
+                        break;
+                    }
                     double minY = Math.Max(s.Y + 36, t.Y + 36) + 10;
                     double maxY = Math.Min(s.Y + s.H, t.Y + t.H) - 10;
                     edge.Y = Math.Clamp(drag.OrigY + (w.Y - drag.StartWorld.Y), minY, Math.Max(minY, maxY));
@@ -718,7 +742,7 @@ public class DiagramCanvas : FrameworkElement
                     var target = HitNode(w);
                     if (target != null)
                     {
-                        var (ok, reason) = ed.TryConnect(drag.ConnectKind, drag.Node, target);
+                        var (ok, reason) = ed.TryConnect(drag.ConnectKind, drag.Node, target, drag.StartWorld.Y);
                         if (!ok) Hint(reason);
                     }
                     if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && ed.Tool.Mode == ToolMode.Connect) ed.SetTool(ToolSpec.Select);
@@ -905,6 +929,3 @@ public class DiagramCanvas : FrameworkElement
         ed.Mutate(() => { foreach (var id in ed.SelNodes) { var n = ed.Current.Node(id); if (n != null) { n.X += dx; n.Y += dy; } } }, "Nudge");
     }
 }
-
-// extra drag fields
-public partial class DragExtra { }
