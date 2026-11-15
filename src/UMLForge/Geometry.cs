@@ -4,7 +4,7 @@ using System.Windows.Media;
 
 namespace UmlForge;
 
-public class EdgeLabel { public double X, Y; public string Text; public bool Bold, Italic; public double Size; public string Align = "middle"; }
+public class EdgeLabel { public double X, Y; public string Text; public bool Bold, Italic; public double Size; public string Align = "middle"; public bool Movable = true; }
 public class EdgePath
 {
     public List<Point> Points = new();
@@ -263,13 +263,13 @@ public static class Geo
         if (e.Kind is EdgeKind.Association or EdgeKind.Aggregation or EdgeKind.Composition or EdgeKind.Link or EdgeKind.CommunicationPath or EdgeKind.CommunicationAssociation)
         {
             if (!string.IsNullOrWhiteSpace(e.SourceMultiplicity))
-                p.Labels.Add(new EdgeLabel { X = p.StartTip.X + dir.X * 16 + perp.X * 12, Y = p.StartTip.Y + dir.Y * 16 + perp.Y * 12 - fs / 2, Text = e.SourceMultiplicity, Size = fs - 1, Align = "start" });
+                p.Labels.Add(new EdgeLabel { X = p.StartTip.X + dir.X * 16 + perp.X * 12, Y = p.StartTip.Y + dir.Y * 16 + perp.Y * 12 - fs / 2, Text = e.SourceMultiplicity, Size = fs - 1, Align = "start", Movable = false });
             if (!string.IsNullOrWhiteSpace(e.TargetMultiplicity))
-                p.Labels.Add(new EdgeLabel { X = p.EndTip.X - dir.X * 16 + perp.X * 12, Y = p.EndTip.Y - dir.Y * 16 + perp.Y * 12 - fs / 2, Text = e.TargetMultiplicity, Size = fs - 1, Align = "end" });
+                p.Labels.Add(new EdgeLabel { X = p.EndTip.X - dir.X * 16 + perp.X * 12, Y = p.EndTip.Y - dir.Y * 16 + perp.Y * 12 - fs / 2, Text = e.TargetMultiplicity, Size = fs - 1, Align = "end", Movable = false });
             if (!string.IsNullOrWhiteSpace(e.SourceRole))
-                p.Labels.Add(new EdgeLabel { X = p.StartTip.X + dir.X * 34 + perp.X * 13, Y = p.StartTip.Y + dir.Y * 34 + perp.Y * 13 - fs / 2, Text = e.SourceRole, Size = fs - 1, Italic = true, Align = "start" });
+                p.Labels.Add(new EdgeLabel { X = p.StartTip.X + dir.X * 34 + perp.X * 13, Y = p.StartTip.Y + dir.Y * 34 + perp.Y * 13 - fs / 2, Text = e.SourceRole, Size = fs - 1, Italic = true, Align = "start", Movable = false });
             if (!string.IsNullOrWhiteSpace(e.TargetRole))
-                p.Labels.Add(new EdgeLabel { X = p.EndTip.X - dir.X * 34 + perp.X * 13, Y = p.EndTip.Y - dir.Y * 34 + perp.Y * 13 - fs / 2, Text = e.TargetRole, Size = fs - 1, Italic = true, Align = "end" });
+                p.Labels.Add(new EdgeLabel { X = p.EndTip.X - dir.X * 34 + perp.X * 13, Y = p.EndTip.Y - dir.Y * 34 + perp.Y * 13 - fs / 2, Text = e.TargetRole, Size = fs - 1, Italic = true, Align = "end", Movable = false });
             if (!string.IsNullOrWhiteSpace(e.Name))
                 p.Labels.Add(new EdgeLabel { X = mid.X + (isSelf ? 0 : perp.X * 11), Y = mid.Y + (isSelf ? 0 : perp.Y * 11) - fs / 2, Text = e.Name + (e.ShowDirection ? " ▶" : ""), Size = fs - 1, Align = align });
         }

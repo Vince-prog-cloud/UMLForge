@@ -202,15 +202,43 @@ public class DiagramCanvas : FrameworkElement
         }
         return null;
     }
+    bool HitEdgeLabel(Point w, out UmlEdge hitEdge)
+    {
+        hitEdge = null;
+        double pad = 4 / Zoom;
+        for (int i = ed.Current.Edges.Count - 1; i >= 0; i--)
+        {
+            var e = ed.Current.Edges[i];
+            var p = Geo.BuildEdgePath(e, ed.Current, Settings.FontSize);
+            foreach (var l in p.Labels)
+            {
+                if (!l.Movable) continue;
+                var sz = Geo.Measure(l.Text, l.Size, l.Bold, l.Italic);
+                double x = l.Align == "middle" ? l.X - sz.Width / 2 : l.Align == "end" ? l.X - sz.Width : l.X;
+                var r = new Rect(x - pad, l.Y - pad, sz.Width + pad * 2, sz.Height + pad * 2);
+                if (r.Contains(w))
+                {
+                    hitEdge = e;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     string HitHandle(Point w, UmlNode n)
     {
         if (n == null || Catalog.IsFixed(n.Kind)) return null;
         var b = Geo.Bounds(n, Settings.FontSize);
         b.Inflate(4 / Zoom, 4 / Zoom);
-        double tol = 9 / Zoom;
+        double half = 7 / Zoom;
         var names = new[] { "nw", "n", "ne", "e", "se", "s", "sw", "w" };
         int i = 0;
-        foreach (var h in Renderer.Handles(b)) { if ((w - h).Length < tol) return names[i]; i++; }
+        foreach (var h in Renderer.Handles(b))
+        {
+            if (Math.Abs(w.X - h.X) <= half && Math.Abs(w.Y - h.Y) <= half)
+                return names[i];
+            i++;
+        }
         return null;
     }
     string HitPort(Point w, UmlNode n)
@@ -261,15 +289,38 @@ public class DiagramCanvas : FrameworkElement
             if (n.Name.Length > 0) RequestRename(n);
             e.Handled = true; return;
         }
-
+        if (HitEdgeLabel(w, out var labelEdge))
+        {
+            ed.SelectOnly(labelEdge);
+            ed.Begin();
+            drag = new DragState { Mode = "label", Edge = labelEdge, StartWorld = w, OrigLdx = labelEdge.LabelDx, OrigLdy = labelEdge.LabelDy };
+            return;
+        }
         var node = HitNode(w);
         if (ed.Tool.Mode == ToolMode.Connect)
         {
             if (node != null) StartConnect(node, ed.Tool.Edge, w);
             return;
         }
-
         // selection tool
+        if (ed.SelNodes.Count == 1)
+        {
+            var sel = ed.Current.Node(ed.SelNodes.First());
+            if (sel != null)
+            {
+                string h = HitHandle(w, sel);
+                if (h != null)
+                {
+                    var b = Geo.Bounds(sel, Settings.FontSize);
+                    ed.Begin();
+                    drag = new DragState { Mode = "resize", Node = sel, Handle = h, StartWorld = w, OrigW = b.Width, OrigH = b.Height };
+                    drag.Orig[sel.Id] = (sel.X, sel.Y);
+                    return;
+                }
+                string port = HitPort(w, sel);
+                if (port != null) { StartConnect(sel, Catalog.Diagrams[ed.Current.Kind].Quick, w); return; }
+            }
+        }
         // 1. Check selected edge endpoints/bend handle BEFORE HitNode so endpoints on lifelines can be dragged
         if (ed.SelEdges.Count == 1)
         {
@@ -374,8 +425,8 @@ public class DiagramCanvas : FrameworkElement
             ed.SelectOnly(edge);
             if (ed.Current.Kind == DiagramKind.Sequence && edge.IsMessage && edge.Kind != EdgeKind.MessageCreate)
             { ed.Begin(); drag = new DragState { Mode = "message", Edge = edge, StartWorld = w, OrigY = edge.Y }; return; }
-            if (edge.Kind == EdgeKind.Transition || edge.Kind is EdgeKind.Association or EdgeKind.Aggregation or EdgeKind.Composition)
-            { ed.Begin(); drag = new DragState { Mode = "label", Edge = edge, StartWorld = w, OrigLdx = edge.LabelDx, OrigLdy = edge.LabelDy }; return; }
+            ed.Begin();
+            drag = new DragState { Mode = "label", Edge = edge, StartWorld = w, OrigLdx = edge.LabelDx, OrigLdy = edge.LabelDy };
             return;
         }
         if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) ed.ClearSelection();
@@ -427,6 +478,10 @@ public class DiagramCanvas : FrameworkElement
             }
             else if (ed.Tool.Mode == ToolMode.Select && HitActivationEdge(w, out _, out _, out _))
                 Cursor = Cursors.SizeNS;
+            else if (ed.Tool.Mode == ToolMode.Select && HitActivationEdge(w, out _, out _, out _))
+                Cursor = Cursors.SizeNS;
+            else if (ed.Tool.Mode == ToolMode.Select && HitEdgeLabel(w, out _))
+                Cursor = Cursors.SizeAll;
             else
                 UpdateCursor();
 
@@ -798,6 +853,7 @@ public class DiagramCanvas : FrameworkElement
                 if (node.Kind == NodeKind.Enumeration && w.Y > node.Y + 30) { QuickAddLiteral(node); e.Handled = true; return; }
                 RequestRename(node); e.Handled = true; return;
             }
+            if (HitEdgeLabel(w, out var lblEdge)) { RequestEdgeLabel(lblEdge); e.Handled = true; return; }
             var edge = HitEdge(w);
             if (edge != null) { RequestEdgeLabel(edge); e.Handled = true; }
         }
