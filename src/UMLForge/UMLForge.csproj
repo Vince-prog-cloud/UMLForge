@@ -15,13 +15,9 @@
 		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
 	</PropertyGroup>
 	<ItemGroup>
-	  <Folder Include="Domain\Catalog\" />
-	  <Folder Include="Domain\Validation\" />
-	  <Folder Include="Infrastructure\" />
 	  <Folder Include="Presentation\Geometry\" />
 	  <Folder Include="Presentation\Canvas\" />
 	  <Folder Include="Presentation\Controls\" />
-	  <Folder Include="Presentation\Icons\" />
 	  <Folder Include="Presentation\Views\" />
 	  <Folder Include="Presentation\Rendering\" />
 	</ItemGroup>

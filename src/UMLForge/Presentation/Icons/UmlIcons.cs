@@ -1,0 +1,66 @@
+﻿using System.Windows.Media;
+
+namespace UmlForge;
+
+public static class UmlIcons
+{
+    public static Geometry Get(string key) => Geometry.Parse(key switch
+    {
+        "Class" => "M3,4 H21 V20 H3 Z M3,9 H21 M3,14 H21",
+        "Interface" => "M12,4 a8,8 0 1,0 0.1,0 Z M12,12 V21",
+        "Enumeration" => "M3,4 H21 V20 H3 Z M3,9 H21 M6,12 H14 M6,16 H12",
+        "DataType" => "M3,4 H21 V20 H3 Z M3,9 H21",
+        "Object" => "M3,5 H21 V19 H3 Z M3,10 H21",
+        "Actor" => "M12,3 a3,3 0 1,0 0.1,0 Z M12,9 V16 M6,12 H18 M12,16 L7,22 M12,16 L17,22",
+        "UseCase" => "M3,12 a9,5.5 0 1,0 18,0 a9,5.5 0 1,0 -18,0 Z",
+        "Boundary" => "M3,4 H21 V20 H3 Z M8,4 V20",
+        "Lifeline" => "M5,3 H19 V8 H5 Z M12,8 V22",
+        "Fragment" => "M3,4 H21 V20 H3 Z M3,4 H10 L12,7 H3 Z M3,13 H21",
+        "InteractionUse" => "M3,4 H21 V20 H3 Z M3,4 H9 L11,7 H3 Z",
+        "Initial" => "M12,6 a6,6 0 1,0 0.1,0 Z",
+        "ActivityFinal" => "M12,3 a9,9 0 1,0 0.1,0 Z M12,8 a4,4 0 1,0 0.1,0 Z",
+        "FlowFinal" => "M12,3 a9,9 0 1,0 0.1,0 Z M7,7 L17,17 M17,7 L7,17",
+        "Action" => "M6,5 H18 a4,4 0 0 1 4,4 V15 a4,4 0 0 1 -4,4 H6 a4,4 0 0 1 -4,-4 V9 a4,4 0 0 1 4,-4 Z",
+        "Decision" => "M12,3 L21,12 L12,21 L3,12 Z",
+        "Fork" => "M3,10 H21 V14 H3 Z",
+        "SendSignal" => "M3,6 H17 L21,12 L17,18 H3 Z",
+        "AcceptSignal" => "M7,6 H21 V18 H7 L3,12 Z",
+        "TimeEvent" => "M5,4 H19 L5,20 H19 Z",
+        "ObjectNode" => "M3,6 H21 V18 H3 Z",
+        "Partition" => "M3,4 H21 V20 H3 Z M3,8 H21 M12,8 V20",
+        "State" => "M7,5 H17 a4,4 0 0 1 4,4 V15 a4,4 0 0 1 -4,4 H7 a4,4 0 0 1 -4,-4 V9 a4,4 0 0 1 4,-4 Z M3,11 H21",
+        "StateInitial" => "M12,6 a6,6 0 1,0 0.1,0 Z",
+        "StateFinal" => "M12,3 a9,9 0 1,0 0.1,0 Z M12,8 a4,4 0 1,0 0.1,0 Z",
+        "Choice" => "M12,3 L21,12 L12,21 L3,12 Z",
+        "Junction" => "M12,8 a4,4 0 1,0 0.1,0 Z",
+        "Terminate" => "M5,5 L19,19 M19,5 L5,19",
+        "HistoryShallow" => "M12,3 a9,9 0 1,0 0.1,0 Z M9,8 V16 M15,8 V16 M9,12 H15",
+        "HistoryDeep" => "M12,3 a9,9 0 1,0 0.1,0 Z M8,8 V16 M13,8 V16 M8,12 H13 M17,8 L20,11 M20,8 L17,11",
+        "Component" => "M6,4 H21 V20 H6 Z M3,7 H8 V10 H3 Z M3,14 H8 V17 H3 Z",
+        "Port" => "M8,8 H16 V16 H8 Z",
+        "ProvidedInterface" => "M12,4 a7,7 0 1,0 0.1,0 Z M12,18 V22",
+        "RequiredInterface" => "M6,11 a6,6 0 0 1 12,0 M12,11 V22",
+        "DeviceNode" => "M3,8 L8,3 H21 L16,8 Z M3,8 H16 V21 H3 Z M16,8 L21,3 V16 L16,21",
+        "ExecEnvNode" => "M3,8 L8,3 H21 L16,8 Z M3,8 H16 V21 H3 Z M16,8 L21,3 V16 L16,21",
+        "Artifact" => "M5,3 H15 L19,7 V21 H5 Z M15,3 V7 H19",
+        "Package" => "M3,6 H10 V9 H21 V20 H3 Z",
+        "Note" => "M4,3 H16 L20,7 V21 H4 Z M16,3 V7 H20",
+        "Association" => "M3,18 L21,6",
+        "Aggregation" => "M8,15 L21,6 M3,18 L6,13 L11,12 L8,17 Z",
+        "Composition" => "M8,15 L21,6 M3,18 L6,13 L11,12 L8,17 Z",
+        "Generalization" => "M3,18 L14,11 M14,11 L21,6 L17,14 Z",
+        "Realization" => "M3,18 L7,15 M9,14 L13,11 M14,11 L21,6 L17,14 Z",
+        "Dependency" or "Usage" or "Include" or "Extend" or "Deployment" or "Manifest" or "PackageImport" or "PackageMerge"
+            => "M3,18 L7,15 M9,14 L13,11 M15,10 L19,7 M19,7 L15,7 M19,7 L18,11",
+        "Link" or "CommunicationAssociation" or "CommunicationPath" => "M3,18 L21,6",
+        "ControlFlow" or "ObjectFlow" or "Transition" => "M3,18 L19,7 M19,7 L14,7 M19,7 L18,12",
+        "MessageSync" => "M3,12 H19 M19,12 L13,8 V16 Z",
+        "MessageAsync" => "M3,12 H19 M19,12 L13,8 M19,12 L13,16",
+        "MessageReply" or "MessageCreate" => "M3,12 H7 M9,12 H13 M15,12 H19 M19,12 L13,8 M19,12 L13,16",
+        "MessageDelete" => "M3,12 H17 M17,8 L21,16 M21,8 L17,16",
+        "NoteLink" => "M3,18 L7,15 M9,14 L13,11 M15,10 L19,7",
+        "Select" => "M6,3 L18,13 L12,14 L15,20 L12,21 L9,15 L6,18 Z",
+        "Pan" => "M12,3 V21 M3,12 H21 M12,3 L9,6 M12,3 L15,6 M12,21 L9,18 M12,21 L15,18 M3,12 L6,9 M3,12 L6,15 M21,12 L18,9 M21,12 L18,15",
+        _ => "M4,4 H20 V20 H4 Z"
+    });
+}
