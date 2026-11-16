@@ -100,9 +100,11 @@
         <!-- Main Workspace -->
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="264"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="320"/>
+                <ColumnDefinition Width="264" MinWidth="180" MaxWidth="480"/>
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="*" MinWidth="320"/>
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="320" MinWidth="220" MaxWidth="560"/>
             </Grid.ColumnDefinitions>
 
             <!-- Left Rail: Model & Palette -->
@@ -135,8 +137,12 @@
                 </DockPanel>
             </Border>
 
+            <!-- Left Resize Splitter -->
+            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                          Background="{StaticResource BorderBrush}" Cursor="SizeWE" ShowsPreview="False"/>
+
             <!-- Center Canvas Stage -->
-            <Grid Grid.Column="1">
+            <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -151,7 +157,7 @@
                     <Border x:Name="CanvasHost"/>
                     <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False"/>
                     <Border x:Name="EmptyHint" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="Collapsed"
-                  Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" Padding="20,16">
+                            Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" Padding="20,16">
                         <StackPanel>
                             <TextBlock Text="EMPTY DIAGRAM" FontSize="15" FontWeight="Bold" Foreground="{StaticResource IvoryBrush}" HorizontalAlignment="Center"/>
                             <TextBlock Text="Select an element from the Toolbox and click on the canvas, or click source then target to connect." Foreground="{StaticResource SecondaryBrush}" FontSize="12" Margin="0,6,0,0" TextWrapping="Wrap" MaxWidth="360" TextAlignment="Center"/>
@@ -171,8 +177,12 @@
                 </Grid>
             </Grid>
 
+            <!-- Right Resize Splitter -->
+            <GridSplitter Grid.Column="3" Width="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                          Background="{StaticResource BorderBrush}" Cursor="SizeWE" ShowsPreview="False"/>
+
             <!-- Right Inspector -->
-            <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+            <Border Grid.Column="4" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
                 <TabControl x:Name="RightTabs" Margin="0,6,0,0">
                     <TabItem Header="Properties">
                         <Border x:Name="PropsHost"/>
