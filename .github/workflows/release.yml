@@ -1,0 +1,66 @@
+name: Build & Release Windows App
+
+"on":
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Resolve version & project path
+        id: meta
+        shell: pwsh
+        run: |
+          $tag = if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') { "v${{ github.event.inputs.version }}" } else { $env:GITHUB_REF_NAME }
+          $ver = $tag -replace '^v',''
+          $csproj = (Get-ChildItem -Recurse -Filter UMLForge.csproj | Select-Object -First 1).FullName
+          $pubDir = Join-Path (Split-Path $csproj -Parent) "bin\Release\net8.0-windows\win-x64\publish"
+          echo "TAG=$tag" >> $env:GITHUB_OUTPUT
+          echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
+          echo "CSPROJ=$csproj" >> $env:GITHUB_OUTPUT
+          echo "PUBDIR=$pubDir" >> $env:GITHUB_OUTPUT
+
+      - name: Publish single-file EXE
+        run: >
+          dotnet publish "${{ steps.meta.outputs.CSPROJ }}"
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:Version=${{ steps.meta.outputs.VERSION }}
+
+      - name: Compile Inno Setup installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            "/DMyAppVersion=${{ steps.meta.outputs.VERSION }}" `
+            "/DPublishDir=${{ steps.meta.outputs.PUBDIR }}" `
+            "installer\UmlForge.iss"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.TAG }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.meta.outputs.PUBDIR }}\UmlForge.exe
+            installer\Output\UmlForge-Setup-${{ steps.meta.outputs.VERSION }}.exe
