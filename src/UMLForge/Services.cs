@@ -107,7 +107,7 @@ public static class ValidationService
 
         var named = d.Nodes.Where(n => n.Kind is not (NodeKind.Initial or NodeKind.StateInitial or NodeKind.ActivityFinal or NodeKind.StateFinal
             or NodeKind.FlowFinal or NodeKind.Junction or NodeKind.Terminate or NodeKind.Choice or NodeKind.Decision or NodeKind.Fork
-            or NodeKind.HistoryShallow or NodeKind.HistoryDeep or NodeKind.Port)).ToList();
+            or NodeKind.HistoryShallow or NodeKind.HistoryDeep or NodeKind.Port or NodeKind.Fragment)).ToList();
         foreach (var n in named)
             if (string.IsNullOrWhiteSpace(n.Name)) Add(Severity.Warning, $"{Catalog.Nodes[n.Kind].Label} has no name.", n.Id);
         foreach (var g in named.Where(n => n.IsClassifier || n.Kind == NodeKind.Component).GroupBy(n => n.Name).Where(g => g.Count() > 1 && !string.IsNullOrWhiteSpace(g.Key)))

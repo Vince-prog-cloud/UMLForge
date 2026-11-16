@@ -24,7 +24,87 @@ public static class Dialogs
         w.Content = sp; w.Loaded += (_, _) => { tb.Focus(); tb.SelectAll(); };
         return w.ShowDialog() == true ? tb.Text : null;
     }
+    public static (Project project, UmlPackage focusPkg, string filePath) StartupPicker(Window owner, Project autosaved, string lastFile)
+    {
+        var w = new Window { Title = "Welcome to UmlForge", Width = 540, SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = Bg, ResizeMode = ResizeMode.NoResize };
+        var sp = new StackPanel { Margin = new Thickness(20) };
+        sp.Children.Add(new TextBlock { Text = "UmlForge", Foreground = Fg, FontSize = 20, FontWeight = FontWeights.SemiBold });
+        sp.Children.Add(new TextBlock { Text = "Choose a package/project to open or start a new one.", Foreground = Muted, Margin = new Thickness(0, 4, 0, 14) });
 
+        Project chosenProj = null;
+        UmlPackage chosenPkg = null;
+        string chosenFile = "";
+
+        if (autosaved != null && autosaved.Packages.Count > 0)
+        {
+            sp.Children.Add(new TextBlock { Text = $"Recent / Autosaved ({autosaved.Name}) — select package:", Foreground = Muted, FontSize = 11, Margin = new Thickness(0, 0, 0, 4) });
+            var pkgList = new ListBox { MaxHeight = 160, Margin = new Thickness(0, 0, 0, 10) };
+            foreach (var pkg in autosaved.Packages)
+                pkgList.Items.Add(new ListBoxItem { Content = $"📦 {pkg.Name}  ({pkg.Diagrams.Count} diagram(s))", Tag = pkg });
+            pkgList.SelectedIndex = 0;
+            sp.Children.Add(pkgList);
+
+            var openRecent = new Button { Content = "Open Selected Package", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 8), IsDefault = true };
+            openRecent.Click += (_, _) =>
+            {
+                chosenProj = autosaved;
+                chosenPkg = (pkgList.SelectedItem as ListBoxItem)?.Tag as UmlPackage;
+                chosenFile = lastFile ?? "";
+                w.DialogResult = true;
+            };
+            sp.Children.Add(openRecent);
+        }
+
+        var newBtn = new Button { Content = "+ Create New Project & Package…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 8) };
+        newBtn.Click += (_, _) =>
+        {
+            var projName = Input(w, "New Project", "Project name:", "MyProject");
+            if (string.IsNullOrWhiteSpace(projName)) return;
+            var pkgName = Input(w, "Initial Package", "Package name:", "CoreModel");
+            if (string.IsNullOrWhiteSpace(pkgName)) return;
+            var p = new Project { Name = projName.Trim() };
+            var pkg = new UmlPackage { Name = pkgName.Trim() };
+            pkg.Diagrams.Add(new Diagram { Kind = DiagramKind.Class, Name = "Main" });
+            p.Packages.Add(pkg);
+            chosenProj = p; chosenPkg = pkg;
+            w.DialogResult = true;
+        };
+        sp.Children.Add(newBtn);
+
+        var openFileBtn = new Button { Content = "Open .uforge File from Disk…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 8) };
+        openFileBtn.Click += (_, _) =>
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "UmlForge project (*.uforge)|*.uforge|JSON (*.json)|*.json|All files (*.*)|*.*" };
+            if (dlg.ShowDialog() == true)
+            {
+                try
+                {
+                    chosenProj = ProjectStore.Load(dlg.FileName);
+                    chosenPkg = chosenProj.Packages.FirstOrDefault();
+                    chosenFile = dlg.FileName;
+                    w.DialogResult = true;
+                }
+                catch (Exception ex) { MessageBox.Show("Could not open file:\n" + ex.Message, "UmlForge"); }
+            }
+        };
+        sp.Children.Add(openFileBtn);
+
+        var sampleBtn = new Button { Content = "Load Sample Project (Library System)", HorizontalAlignment = HorizontalAlignment.Stretch };
+        sampleBtn.Click += (_, _) =>
+        {
+            chosenProj = Seed.Build();
+            chosenPkg = chosenProj.Packages.FirstOrDefault();
+            w.DialogResult = true;
+        };
+        sp.Children.Add(sampleBtn);
+
+        w.Content = sp;
+        if (w.ShowDialog() == true && chosenProj != null)
+            return (chosenProj, chosenPkg, chosenFile);
+
+        var fallback = autosaved ?? Seed.Build();
+        return (fallback, fallback.Packages.FirstOrDefault(), autosaved != null ? (lastFile ?? "") : "");
+    }
     public static (DiagramKind kind, string name)? NewDiagram(Window owner)
     {
         var w = new Window { Title = "New Diagram", Width = 640, Height = 520, WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = owner, Background = Bg };

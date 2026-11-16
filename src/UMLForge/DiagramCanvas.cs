@@ -399,24 +399,15 @@ public class DiagramCanvas : FrameworkElement
             {
                 var n = ed.Current.Node(id); if (n == null) continue;
                 drag.Orig[id] = (n.X, n.Y);
-                if (Catalog.IsContainer(n.Kind))
+                if (Catalog.IsContainer(n.Kind) && n.Kind != NodeKind.Fragment)
                 {
                     var b = Geo.Bounds(n, Settings.FontSize);
                     foreach (var c in ed.Current.Nodes)
                     {
                         if (c == n || ed.SelNodes.Contains(c.Id) || !string.IsNullOrEmpty(c.AttachParentId)) continue;
-                        if (n.Kind == NodeKind.Fragment && c.Kind is NodeKind.Lifeline or NodeKind.Fragment) continue;
                         if (b.Contains(new Point(c.X + c.W / 2, c.Y + c.H / 2)))
                         { drag.Contained.Add(c); drag.Orig[c.Id] = (c.X, c.Y); }
                     }
-                    if (n.Kind == NodeKind.Fragment)
-                        foreach (var m in ed.Current.Edges.Where(x => x.IsMessage))
-                        {
-                            var s = ed.Current.Node(m.SourceId); var t = ed.Current.Node(m.TargetId);
-                            if (s == null || t == null) continue;
-                            if (m.Y > b.Y && m.Y < b.Bottom && s.X + s.W / 2 > b.X && s.X + s.W / 2 < b.Right && t.X + t.W / 2 > b.X && t.X + t.W / 2 < b.Right)
-                                drag.ContainedMsgs.Add(m);
-                        }
                 }
             }
             foreach (var m in drag.ContainedMsgs) drag.OrigYMap[m.Id] = m.Y;
@@ -668,13 +659,32 @@ public class DiagramCanvas : FrameworkElement
                     }
                     double minY = Math.Max(s.Y + 36, t.Y + 36) + 10;
                     double maxY = Math.Min(s.Y + s.H, t.Y + t.H) - 10;
-                    edge.Y = Math.Clamp(drag.OrigY + (w.Y - drag.StartWorld.Y), minY, Math.Max(minY, maxY));
-                    var act = t.Activations.FirstOrDefault(a => a.MessageId == edge.Id);
-                    if (act != null) { act.Start = edge.Y; act.End = Math.Max(act.End, edge.Y + 20); }
+
                     if (edge.Kind == EdgeKind.MessageReply)
                     {
-                        var sa = s.Activations.Where(a => a.Start <= edge.Y).OrderByDescending(a => a.Start).FirstOrDefault();
+                        var sa = s.Activations.Where(a => a.Start <= drag.OrigY + 2).OrderByDescending(a => a.Start).FirstOrDefault();
+                        if (sa != null) minY = Math.Max(minY, sa.Start + 16);
+                        edge.Y = Math.Clamp(drag.OrigY + (w.Y - drag.StartWorld.Y), minY, Math.Max(minY, maxY));
                         if (sa != null) sa.End = edge.Y;
+                    }
+                    else
+                    {
+                        double newY = Math.Clamp(drag.OrigY + (w.Y - drag.StartWorld.Y), minY, Math.Max(minY, maxY));
+                        double dy = newY - edge.Y;
+                        edge.Y = newY;
+
+                        var act = t.Activations.FirstOrDefault(a => a.MessageId == edge.Id);
+                        if (act != null)
+                        {
+                            double prevEnd = act.End;
+                            act.Start = newY;
+                            if (act.End < newY + 16)
+                            {
+                                act.End = newY + 16;
+                                var reply = ed.Current.Edges.FirstOrDefault(x => x.Kind == EdgeKind.MessageReply && x.SourceId == t.Id && Math.Abs(x.Y - prevEnd) < 6);
+                                if (reply != null) reply.Y = act.End;
+                            }
+                        }
                     }
                     break;
                 }

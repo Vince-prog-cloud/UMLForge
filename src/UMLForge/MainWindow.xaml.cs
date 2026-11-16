@@ -30,8 +30,12 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         settings = ProjectStore.LoadSettings();
-        Editor.Project = ProjectStore.LoadAutosave() ?? Seed.Build();
-        currentFile = settings.LastFile;
+        var autosaved = ProjectStore.LoadAutosave();
+        var (startProj, focusPkg, startFile) = Dialogs.StartupPicker(this, autosaved, settings.LastFile);
+        Editor.Project = startProj;
+        currentFile = startFile;
+        if (focusPkg?.Diagrams.Count > 0)
+            Editor.OpenDiagram(focusPkg.Diagrams[0]);
 
         canvas = new DiagramCanvas(Editor, settings)
         {
@@ -56,7 +60,16 @@ public partial class MainWindow : Window
         BuildPalette();
         BuildTabs();
         OnChanged();
-        Loaded += (_, _) => { canvas.Fit(); ProjectNameBox.Text = Editor.Project.Name; };
+        Loaded += (_, _) =>
+        {
+            var wa = SystemParameters.WorkArea;
+            if (Width > wa.Width) Width = wa.Width;
+            if (Height > wa.Height) Height = wa.Height;
+            if (Top < wa.Top) Top = wa.Top;
+            if (Left < wa.Left) Left = wa.Left;
+            canvas.Fit();
+            ProjectNameBox.Text = Editor.Project.Name;
+        };
         Closing += (_, _) => { ProjectStore.Autosave(Editor.Project); ProjectStore.SaveSettings(settings); };
         PreviewKeyDown += OnKey;
         PreviewKeyUp += (_, e) => { if (e.Key == Key.Space) canvas.SetSpace(false); };
