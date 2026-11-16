@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net8.0-windows</TargetFramework>
@@ -15,10 +15,8 @@
 		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
 	</PropertyGroup>
 	<ItemGroup>
-	  <Folder Include="Presentation\Geometry\" />
 	  <Folder Include="Presentation\Canvas\" />
 	  <Folder Include="Presentation\Controls\" />
 	  <Folder Include="Presentation\Views\" />
-	  <Folder Include="Presentation\Rendering\" />
 	</ItemGroup>
 </Project>
