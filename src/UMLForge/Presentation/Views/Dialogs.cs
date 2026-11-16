@@ -7,9 +7,9 @@ namespace UmlForge;
 
 public static class Dialogs
 {
-    static Brush Bg => new SolidColorBrush(Color.FromRgb(26, 36, 56));
-    static Brush Fg => new SolidColorBrush(Color.FromRgb(232, 238, 249));
-    static Brush Muted => new SolidColorBrush(Color.FromRgb(143, 161, 192));
+    static Brush Bg => new SolidColorBrush(Color.FromRgb(18, 23, 58));        // #091A6E
+    static Brush Fg => new SolidColorBrush(Color.FromRgb(252, 249, 236));     // #FCF9EC
+    static Brush Muted => new SolidColorBrush(Color.FromRgb(201, 181, 224));  // #C9B5E0
 
     public static string Input(Window owner, string title, string label, string value)
     {
@@ -24,27 +24,44 @@ public static class Dialogs
         w.Content = sp; w.Loaded += (_, _) => { tb.Focus(); tb.SelectAll(); };
         return w.ShowDialog() == true ? tb.Text : null;
     }
-    public static (Project project, UmlPackage focusPkg, string filePath) StartupPicker(Window owner, Project autosaved, string lastFile)
+    public static (Project project, UmlPackage focusPkg, string filePath)? StartupPicker(Window owner, Project autosaved, string lastFile)
     {
-        var w = new Window { Title = "Welcome to UmlForge", Width = 540, SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = Bg, ResizeMode = ResizeMode.NoResize };
-        var sp = new StackPanel { Margin = new Thickness(20) };
-        sp.Children.Add(new TextBlock { Text = "UmlForge", Foreground = Fg, FontSize = 20, FontWeight = FontWeights.SemiBold });
-        sp.Children.Add(new TextBlock { Text = "Choose a package/project to open or start a new one.", Foreground = Muted, Margin = new Thickness(0, 4, 0, 14) });
+        var w = new Window
+        {
+            Title = "UmlForge — Select Package",
+            Width = 540,
+            SizeToContent = SizeToContent.Height,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            Background = new SolidColorBrush(Color.FromRgb(0, 16, 91)), // #00105B
+            ResizeMode = ResizeMode.NoResize
+        };
 
+        var outer = new Border { BorderBrush = new SolidColorBrush(Color.FromRgb(96, 97, 182)), BorderThickness = new Thickness(1) };
+        var root = new StackPanel();
+
+        // Top Indigo Header Strip (#6061B6)
+        var header = new Border { Background = new SolidColorBrush(Color.FromRgb(96, 97, 182)), Padding = new Thickness(18, 12, 18, 12) };
+        var headerStack = new StackPanel();
+        headerStack.Children.Add(new TextBlock { Text = "UMLFORGE WORKSPACE", Foreground = Fg, FontSize = 15, FontWeight = FontWeights.Bold });
+        headerStack.Children.Add(new TextBlock { Text = "Select a package to open or initialize a new model.", Foreground = Fg, FontSize = 11.5, Opacity = 0.9, Margin = new Thickness(0, 2, 0, 0) });
+        header.Child = headerStack;
+        root.Children.Add(header);
+
+        var sp = new StackPanel { Margin = new Thickness(18) };
         Project chosenProj = null;
         UmlPackage chosenPkg = null;
         string chosenFile = "";
 
         if (autosaved != null && autosaved.Packages.Count > 0)
         {
-            sp.Children.Add(new TextBlock { Text = $"Recent / Autosaved ({autosaved.Name}) — select package:", Foreground = Muted, FontSize = 11, Margin = new Thickness(0, 0, 0, 4) });
-            var pkgList = new ListBox { MaxHeight = 160, Margin = new Thickness(0, 0, 0, 10) };
+            sp.Children.Add(new TextBlock { Text = $"RECENT PROJECT: {autosaved.Name.ToUpperInvariant()}", Foreground = Muted, FontSize = 10.5, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 6) });
+            var pkgList = new ListBox { MaxHeight = 165, Margin = new Thickness(0, 0, 0, 10) };
             foreach (var pkg in autosaved.Packages)
-                pkgList.Items.Add(new ListBoxItem { Content = $"📦 {pkg.Name}  ({pkg.Diagrams.Count} diagram(s))", Tag = pkg });
+                pkgList.Items.Add(new ListBoxItem { Content = $"📦  {pkg.Name}   —   {pkg.Diagrams.Count} diagram(s)", Tag = pkg });
             pkgList.SelectedIndex = 0;
             sp.Children.Add(pkgList);
 
-            var openRecent = new Button { Content = "Open Selected Package", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 8), IsDefault = true };
+            var openRecent = new Button { Content = "Open Selected Package", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 12), IsDefault = true };
             openRecent.Click += (_, _) =>
             {
                 chosenProj = autosaved;
@@ -55,7 +72,9 @@ public static class Dialogs
             sp.Children.Add(openRecent);
         }
 
-        var newBtn = new Button { Content = "+ Create New Project & Package…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 8) };
+        sp.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(Color.FromRgb(96, 97, 182)), Margin = new Thickness(0, 0, 0, 12) });
+
+        var newBtn = new Button { Content = "+  Create New Project & Package…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 8) };
         newBtn.Click += (_, _) =>
         {
             var projName = Input(w, "New Project", "Project name:", "MyProject");
@@ -89,7 +108,7 @@ public static class Dialogs
         };
         sp.Children.Add(openFileBtn);
 
-        var sampleBtn = new Button { Content = "Load Sample Project (Library System)", HorizontalAlignment = HorizontalAlignment.Stretch };
+        var sampleBtn = new Button { Content = "Load Sample Project (Library Management System)", HorizontalAlignment = HorizontalAlignment.Stretch };
         sampleBtn.Click += (_, _) =>
         {
             chosenProj = Seed.Build();
@@ -98,13 +117,16 @@ public static class Dialogs
         };
         sp.Children.Add(sampleBtn);
 
-        w.Content = sp;
+        root.Children.Add(sp);
+        outer.Child = root;
+        w.Content = outer;
+
         if (w.ShowDialog() == true && chosenProj != null)
             return (chosenProj, chosenPkg, chosenFile);
 
-        var fallback = autosaved ?? Seed.Build();
-        return (fallback, fallback.Packages.FirstOrDefault(), autosaved != null ? (lastFile ?? "") : "");
+        return null;
     }
+
     public static (DiagramKind kind, string name)? NewDiagram(Window owner)
     {
         var w = new Window { Title = "New Diagram", Width = 640, Height = 520, WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = owner, Background = Bg };
