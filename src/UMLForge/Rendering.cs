@@ -212,10 +212,11 @@ public class Renderer
         Text(label, head.X + head.Width / 2, head.Y + 18 - fs / 2, t.Ink, fs, false, false, false, "center");
         double cx = b.X + b.Width / 2;
         dc.DrawLine(t.DashPen, new Point(cx, head.Bottom), new Point(cx, b.Bottom));
-        foreach (var a in n.Activations)
+        foreach (var a in n.Activations.OrderBy(a => a.Depth))
         {
             double start = Math.Max(a.Start, head.Bottom), end = Math.Min(a.End, b.Bottom);
-            if (end > start) Rect(new Rect(cx - 7, start, 14, end - start), t.NodeFill, t.InkPen);
+            double x = cx - 7 + a.Depth * 7;
+            if (end > start) Rect(new Rect(x, start, 14, end - start), t.NodeFill, t.InkPen);
         }
     }
 

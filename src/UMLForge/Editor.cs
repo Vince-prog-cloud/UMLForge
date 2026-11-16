@@ -173,8 +173,14 @@ public class Editor
             }
             else if (kind == EdgeKind.MessageSync && s == t)
             {
-                bottomY = y + 26;
-                s.Activations.Add(new Activation { Start = y, End = bottomY, MessageId = e.Id });
+                bottomY = y + 36;
+                int parentDepth = s.Activations
+                    .Where(a => a.Start <= y && a.End >= y)
+                    .Select(a => a.Depth + 1)
+                    .DefaultIfEmpty(1)
+                    .Max();
+                s.Activations.Add(new Activation { Start = y, End = bottomY, Depth = parentDepth, MessageId = e.Id });
+                reply = new UmlEdge { Kind = EdgeKind.MessageReply, SourceId = s.Id, TargetId = s.Id, Y = bottomY, Name = "return", IsSelfReply = true };
             }
             else if (kind == EdgeKind.MessageReply)
             {

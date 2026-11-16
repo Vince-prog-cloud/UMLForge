@@ -297,11 +297,15 @@ public static class Geo
         return s.Trim();
     }
 
-    public static double ActivationEdge(UmlNode lifeline, double y, int sign)
+    public static double ActivationEdge(UmlNode lifeline, double y, int sign, int maxDepth = int.MaxValue)
     {
         double cx = lifeline.X + lifeline.W / 2;
-        var act = lifeline.Activations.FirstOrDefault(a => a.Start <= y + 0.5 && a.End >= y - 0.5);
-        return act == null ? cx : cx + sign * 7;
+        var act = lifeline.Activations
+            .Where(a => a.Depth <= maxDepth && a.Start <= y + 0.5 && a.End >= y - 0.5)
+            .OrderByDescending(a => a.Depth)
+            .FirstOrDefault();
+        if (act == null) return cx;
+        return sign > 0 ? cx + 7 + act.Depth * 7 : cx - 7 + act.Depth * 7;
     }
 
     static void BuildMessage(UmlEdge e, UmlNode s, UmlNode t, Diagram d, double fs, EdgePath p)
@@ -309,10 +313,26 @@ public static class Geo
         double y = e.Y;
         if (e.Kind == EdgeKind.MessageCreate) y = t.Y + 18;
         double scx = s.X + s.W / 2, tcx = t.X + t.W / 2;
-        if (s == t)
+
+        if (s == t && (e.IsSelfReply || e.Kind == EdgeKind.MessageReply))
         {
-            double x = scx + 7;
-            p.Points = new() { new(x, y), new(x + 46, y), new(x + 46, y + 26), new(x, y + 26) };
+            var inner = s.Activations.Where(a => Math.Abs(a.End - y) < 6).OrderByDescending(a => a.Depth).FirstOrDefault();
+            int outerDepth = inner != null ? inner.Depth - 1 : 0;
+            double targetX = ActivationEdge(s, y, 1, outerDepth);
+            double stubStart = targetX + 34;
+            p.Points = new() { new(stubStart, y), new(targetX, y) };
+            p.StartTip = p.Points[0]; p.EndTip = p.Points[^1];
+            p.StartDir = new Vector(-1, 0); p.EndDir = new Vector(-1, 0);
+        }
+        else if (s == t)
+        {
+            var inner = s.Activations.FirstOrDefault(a => a.MessageId == e.Id);
+            int innerDepth = inner?.Depth ?? 1;
+            double startX = ActivationEdge(s, y, 1, innerDepth - 1);
+            double endX = ActivationEdge(s, y, 1, innerDepth);
+            double loopR = Math.Max(startX, endX) + 34;
+            double drop = inner != null ? Math.Min(16, Math.Max(10, (inner.End - inner.Start) * 0.35)) : 14;
+            p.Points = new() { new(startX, y), new(loopR, y), new(loopR, y + drop), new(endX, y + drop) };
             p.StartTip = p.Points[0]; p.EndTip = p.Points[^1];
             p.StartDir = new Vector(1, 0); p.EndDir = new Vector(-1, 0);
         }
@@ -325,6 +345,7 @@ public static class Geo
             p.StartTip = p.Points[0]; p.EndTip = p.Points[^1];
             p.StartDir = new Vector(sign, 0); p.EndDir = new Vector(sign, 0);
         }
+
         string num = "";
         if (d.ShowSequenceNumbers)
         {
@@ -333,8 +354,9 @@ public static class Geo
             if (i >= 0) num = (i + 1) + ": ";
         }
         var label = num + (string.IsNullOrWhiteSpace(e.Name) ? "message()" : e.Name);
-        double mx = (p.StartTip.X + p.EndTip.X) / 2;
-        p.Labels.Add(new EdgeLabel { X = mx + e.LabelDx, Y = y - fs - 7 + e.LabelDy, Text = label, Size = fs - 1, Movable = true });
+        double mx = s == t ? p.Points[1].X + 6 : (p.StartTip.X + p.EndTip.X) / 2;
+        string align = s == t ? "start" : "middle";
+        p.Labels.Add(new EdgeLabel { X = mx + e.LabelDx, Y = y - fs - 7 + e.LabelDy, Text = label, Size = fs - 1, Align = align, Movable = true });
     }
 
     public static double DistToSegment(Point p, Point a, Point b)

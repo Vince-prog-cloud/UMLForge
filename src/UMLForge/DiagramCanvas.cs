@@ -316,10 +316,39 @@ public class DiagramCanvas : FrameworkElement
         var node = HitNode(w);
         if (ed.Tool.Mode == ToolMode.Connect)
         {
-            if (node != null) StartConnect(node, ed.Tool.Edge, w);
+            if (drag?.Mode == "connect")
+            {
+                if (node != null)
+                {
+                    var (ok, reason) = ed.TryConnect(drag.ConnectKind, drag.Node, node, drag.StartWorld.Y);
+                    if (!ok) Hint(reason);
+                }
+                drag = null;
+                Hint("");
+                if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) ed.SetTool(ToolSpec.Select);
+                InvalidateVisual();
+                return;
+            }
+            if (node != null)
+            {
+                StartConnect(node, ed.Tool.Edge, w);
+                InvalidateVisual();
+            }
             return;
         }
         // selection tool
+        if (drag?.Mode == "connect")
+        {
+            if (node != null)
+            {
+                var (ok, reason) = ed.TryConnect(drag.ConnectKind, drag.Node, node, drag.StartWorld.Y);
+                if (!ok) Hint(reason);
+            }
+            drag = null;
+            Hint("");
+            InvalidateVisual();
+            return;
+        }
         if (ed.SelNodes.Count == 1)
         {
             var sel = ed.Current.Node(ed.SelNodes.First());
@@ -495,8 +524,6 @@ public class DiagramCanvas : FrameworkElement
             }
             else if (ed.Tool.Mode == ToolMode.Select && HitActivationEdge(w, out _, out _, out _))
                 Cursor = Cursors.SizeNS;
-            else if (ed.Tool.Mode == ToolMode.Select && HitActivationEdge(w, out _, out _, out _))
-                Cursor = Cursors.SizeNS;
             else if (ed.Tool.Mode == ToolMode.Select && HitEdgeLabel(w, out _))
                 Cursor = Cursors.SizeAll;
             else
@@ -507,7 +534,8 @@ public class DiagramCanvas : FrameworkElement
             if (ed.Tool.Mode == ToolMode.Place) InvalidateVisual();
             return;
         }
-        drag.Moved = true;
+        if (drag.Mode != "connect" || (w - drag.StartWorld).Length > 6 / Zoom)
+            drag.Moved = true;
         switch (drag.Mode)
         {
             case "pan":
@@ -758,6 +786,8 @@ public class DiagramCanvas : FrameworkElement
                 }
             case "connect":
                 {
+                    if (!drag.Moved)
+                        return; // Keep connect preview active until second click on target
                     var target = HitNode(w);
                     if (target != null)
                     {
@@ -806,6 +836,14 @@ public class DiagramCanvas : FrameworkElement
 
     protected override void OnMouseRightButtonUp(MouseButtonEventArgs e)
     {
+        if (drag?.Mode == "connect")
+        {
+            drag = null;
+            Hint("");
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
         var w = ToWorld(e.GetPosition(this));
         var node = HitNode(w); var edge = node == null ? HitEdge(w) : null;
         if (node != null) ed.SelectOnly(node); else if (edge != null) ed.SelectOnly(edge);
