@@ -14,9 +14,4 @@
 		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
 		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
 	</PropertyGroup>
-	<ItemGroup>
-	  <Folder Include="Presentation\Canvas\" />
-	  <Folder Include="Presentation\Controls\" />
-	  <Folder Include="Presentation\Views\" />
-	</ItemGroup>
 </Project>

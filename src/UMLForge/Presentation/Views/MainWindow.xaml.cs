@@ -459,7 +459,7 @@ public partial class MainWindow : Window
             case Key.F1: Dialogs.Help(this); e.Handled = true; break;
             case Key.D0 when ctrl: canvas.Fit(); e.Handled = true; break;
             case Key.D1 when ctrl: canvas.SetZoom(1); e.Handled = true; break;
-            case Key.Escape: Editor.SetTool(ToolSpec.Select); Editor.ClearSelection(); MarkTool(); break;
+            case Key.Escape: canvas.CancelInteraction(); break;
             case Key.Left: canvas.Nudge(shift ? -10 : -1, 0); break;
             case Key.Right: canvas.Nudge(shift ? 10 : 1, 0); break;
             case Key.Up: canvas.Nudge(0, shift ? -10 : -1); break;
