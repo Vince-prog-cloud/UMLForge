@@ -1,10 +1,8 @@
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using Path = System.Windows.Shapes.Path;
@@ -25,13 +23,21 @@ public partial class MainWindow : Window
     static object clipboardData;
     List<Issue> issues = new();
 
+    static Brush IvoryBrush => new SolidColorBrush(Color.FromRgb(252, 249, 236));     // #FCF9EC
+    static Brush LavenderBrush => new SolidColorBrush(Color.FromRgb(201, 181, 224));  // #C9B5E0
+    static Brush IndigoBrush => new SolidColorBrush(Color.FromRgb(96, 97, 182));      // #6061B6
+    static Brush BorderIdleBrush => new SolidColorBrush(Color.FromRgb(61, 66, 148));  // #3D4294
 
-    public MainWindow()
+    public MainWindow() : this(Seed.Build(), null, "", ProjectStore.LoadSettings()) { }
+
+    public MainWindow(Project startProj, UmlPackage focusPkg, string startFile, AppSettings loadedSettings)
     {
         InitializeComponent();
-        settings = ProjectStore.LoadSettings();
-        Editor.Project = ProjectStore.LoadAutosave() ?? Seed.Build();
-        currentFile = settings.LastFile;
+        settings = loadedSettings;
+        Editor.Project = startProj;
+        currentFile = startFile ?? "";
+        if (focusPkg?.Diagrams.Count > 0)
+            Editor.OpenDiagram(focusPkg.Diagrams[0]);
 
         canvas = new DiagramCanvas(Editor, settings)
         {
@@ -51,12 +57,23 @@ public partial class MainWindow : Window
 
         Editor.Changed += OnChanged;
         Editor.SelectionChanged += OnSelectionChanged;
+        Editor.ToolChanged += MarkTool;
         WireUi();
         BuildExplorer();
         BuildPalette();
         BuildTabs();
         OnChanged();
-        Loaded += (_, _) => { canvas.Fit(); ProjectNameBox.Text = Editor.Project.Name; };
+        Loaded += (_, _) =>
+        {
+            var wa = SystemParameters.WorkArea;
+            if (Width > wa.Width) Width = wa.Width;
+            if (Height > wa.Height) Height = wa.Height;
+            if (Top < wa.Top) Top = wa.Top;
+            if (Left < wa.Left) Left = wa.Left;
+            canvas.Fit();
+            ProjectNameBox.Text = Editor.Project.Name;
+            MarkTool();
+        };
         Closing += (_, _) => { ProjectStore.Autosave(Editor.Project); ProjectStore.SaveSettings(settings); };
         PreviewKeyDown += OnKey;
         PreviewKeyUp += (_, e) => { if (e.Key == Key.Space) canvas.SetSpace(false); };
@@ -64,8 +81,8 @@ public partial class MainWindow : Window
 
     void OnChanged()
     {
-        BuildExplorer(); BuildTabs(); BuildPalette();
-        UndoBtn.IsEnabled = Editor.CanUndo; RedoBtn.IsEnabled = Editor.CanUndo && Editor.CanRedo || Editor.CanRedo;
+        BuildExplorer(); BuildTabs(); BuildPalette(); MarkTool();
+        UndoBtn.IsEnabled = Editor.CanUndo;
         RedoBtn.IsEnabled = Editor.CanRedo;
         EmptyHint.Visibility = Editor.Current == null || Editor.Current.Nodes.Count == 0 ? WinVisibility.Visible : WinVisibility.Collapsed;
         canvas.InvalidateVisual();
@@ -74,11 +91,8 @@ public partial class MainWindow : Window
         Title = $"UmlForge — {Editor.Project.Name}{(Editor.Dirty ? " •" : "")}{(currentFile.Length > 0 ? "  [" + System.IO.Path.GetFileName(currentFile) + "]" : "")}";
         if (ProjectNameBox.Text != Editor.Project.Name && !ProjectNameBox.IsFocused) ProjectNameBox.Text = Editor.Project.Name;
     }
-    void OnSelectionChanged()
-    {
-        canvas.InvalidateVisual();
-        if (Editor.SelNodes.Count == 1 || Editor.SelEdges.Count == 1) { /* panel rebuilds via event */ }
-    }
+
+    void OnSelectionChanged() => canvas.InvalidateVisual();
 
     void WireUi()
     {
@@ -132,7 +146,7 @@ public partial class MainWindow : Window
         };
         ChecksList.MouseDoubleClick += (_, _) =>
         {
-            if (ChecksList.SelectedItem is Issue it && it.ElementId.Length > 0)
+            if ((ChecksList.SelectedItem as ListBoxItem)?.Tag is Issue it && it.ElementId.Length > 0)
             {
                 var n = Editor.Current.Node(it.ElementId);
                 if (n != null) Editor.SelectOnly(n); else { var e = Editor.Current.Edge(it.ElementId); if (e != null) Editor.SelectOnly(e); }
@@ -167,7 +181,7 @@ public partial class MainWindow : Window
             foreach (var d in Editor.Open)
             {
                 var sp = new StackPanel { Orientation = Orientation.Horizontal };
-                sp.Children.Add(new Path { Data = Catalog.Icon(d.Kind.ToString()), Stroke = new SolidColorBrush(Color.FromRgb(143, 161, 192)), StrokeThickness = 1.5, Width = 14, Height = 14, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
+                sp.Children.Add(new Path { Data = Catalog.Icon(d.Kind.ToString()), Stroke = LavenderBrush, StrokeThickness = 1.5, Width = 14, Height = 14, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
                 sp.Children.Add(new TextBlock { Text = d.Name, VerticalAlignment = VerticalAlignment.Center });
                 var close = new Button { Content = "✕", FontSize = 9, Padding = new Thickness(4, 1, 4, 1), Margin = new Thickness(8, 0, 0, 0), Background = Brushes.Transparent, BorderThickness = new Thickness(0) };
                 var dd = d;
@@ -213,7 +227,7 @@ public partial class MainWindow : Window
         ExplorerTree.Items.Clear();
         foreach (var pkg in Editor.Project.Packages)
         {
-            var pkgItem = new TreeViewItem { Header = "📦 " + pkg.Name, Tag = pkg };
+            var pkgItem = new TreeViewItem { Header = "📦 " + pkg.Name, Tag = pkg, IsExpanded = true };
             pkgItem.ContextMenu = PackageMenu(pkg);
             foreach (var d in pkg.Diagrams)
             {
@@ -262,7 +276,7 @@ public partial class MainWindow : Window
         PalettePanel.Children.Clear();
         if (Editor.Current == null) return;
         var info = Catalog.Diagrams[Editor.Current.Kind];
-        void Section(string title) => PalettePanel.Children.Add(new TextBlock { Text = title, FontSize = 10, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Color.FromRgb(143, 161, 192)), Margin = new Thickness(4, 8, 0, 4) });
+        void Section(string title) => PalettePanel.Children.Add(new TextBlock { Text = title, FontSize = 10, FontWeight = FontWeights.Bold, Foreground = LavenderBrush, Margin = new Thickness(4, 8, 0, 4) });
         var nodeGrid = new System.Windows.Controls.Primitives.UniformGrid { Columns = 2 };
         var edgeGrid = new System.Windows.Controls.Primitives.UniformGrid { Columns = 1 };
         int idx = 1;
@@ -281,18 +295,24 @@ public partial class MainWindow : Window
     Button ToolButton(string label, Geometry icon, int index, ToolSpec tool, string hint)
     {
         var sp = new StackPanel { Orientation = Orientation.Horizontal };
-        sp.Children.Add(new Path { Data = icon, Stroke = new SolidColorBrush(Color.FromRgb(200, 214, 240)), StrokeThickness = 1.5, Width = 20, Height = 20, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 7, 0) });
-        sp.Children.Add(new TextBlock { Text = label, FontSize = 11, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
+        sp.Children.Add(new Path { Data = icon, Stroke = IvoryBrush, StrokeThickness = 1.5, Width = 18, Height = 18, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 7, 0) });
+        sp.Children.Add(new TextBlock { Text = label, Foreground = IvoryBrush, FontSize = 11.5, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
         var b = new Button { Content = sp, ToolTip = $"{label}  ({index})\n{hint}", HorizontalContentAlignment = HorizontalAlignment.Left, Margin = new Thickness(2), Padding = new Thickness(7, 5, 7, 5), Tag = tool };
         b.Click += (_, _) => { Editor.SetTool(tool); MarkTool(); };
         return b;
     }
     void MarkTool()
     {
+        SelectToolBtn.Background = Editor.Tool.Mode == ToolMode.Select ? IndigoBrush : Brushes.Transparent;
+        PanToolBtn.Background = Editor.Tool.Mode == ToolMode.Pan ? IndigoBrush : Brushes.Transparent;
         foreach (var grid in PalettePanel.Children.OfType<System.Windows.Controls.Primitives.UniformGrid>())
             foreach (var b in grid.Children.OfType<Button>())
-                b.BorderBrush = b.Tag is ToolSpec t && t.Mode == Editor.Tool.Mode && (t.Mode == ToolMode.Place ? t.Node == Editor.Tool.Node : t.Mode == ToolMode.Connect && t.Edge == Editor.Tool.Edge)
-                    ? new SolidColorBrush(Color.FromRgb(77, 141, 255)) : new SolidColorBrush(Color.FromRgb(42, 58, 88));
+            {
+                bool active = b.Tag is ToolSpec t && t.Mode == Editor.Tool.Mode &&
+                              (t.Mode == ToolMode.Place ? t.Node == Editor.Tool.Node : t.Mode == ToolMode.Connect && t.Edge == Editor.Tool.Edge);
+                b.BorderBrush = active ? IvoryBrush : BorderIdleBrush;
+                b.Background = active ? IndigoBrush : (Brush)FindResource("PanelBrush");
+            }
     }
 
     // ---------------- project / diagram ops ----------------
@@ -459,7 +479,7 @@ public partial class MainWindow : Window
             case Key.F1: Dialogs.Help(this); e.Handled = true; break;
             case Key.D0 when ctrl: canvas.Fit(); e.Handled = true; break;
             case Key.D1 when ctrl: canvas.SetZoom(1); e.Handled = true; break;
-            case Key.Escape: canvas.CancelInteraction(); break;
+            case Key.Escape: canvas.CancelInteraction(); Editor.SetTool(ToolSpec.Select); break;
             case Key.Left: canvas.Nudge(shift ? -10 : -1, 0); break;
             case Key.Right: canvas.Nudge(shift ? 10 : 1, 0); break;
             case Key.Up: canvas.Nudge(0, shift ? -10 : -1); break;

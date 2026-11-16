@@ -7,9 +7,9 @@ namespace UmlForge;
 
 public static class Dialogs
 {
-    static Brush Bg => new SolidColorBrush(Color.FromRgb(26, 36, 56));
-    static Brush Fg => new SolidColorBrush(Color.FromRgb(232, 238, 249));
-    static Brush Muted => new SolidColorBrush(Color.FromRgb(143, 161, 192));
+    static Brush Bg => new SolidColorBrush(Color.FromRgb(18, 23, 58));        // #091A6E
+    static Brush Fg => new SolidColorBrush(Color.FromRgb(252, 249, 236));     // #FCF9EC
+    static Brush Muted => new SolidColorBrush(Color.FromRgb(201, 181, 224));  // #C9B5E0
 
     public static string Input(Window owner, string title, string label, string value)
     {
@@ -23,6 +23,108 @@ public static class Dialogs
         sp.Children.Add(ok);
         w.Content = sp; w.Loaded += (_, _) => { tb.Focus(); tb.SelectAll(); };
         return w.ShowDialog() == true ? tb.Text : null;
+    }
+    public static (Project project, UmlPackage focusPkg, string filePath)? StartupPicker(Window owner, Project autosaved, string lastFile)
+    {
+        var w = new Window
+        {
+            Title = "UmlForge — Select Package",
+            Width = 540,
+            SizeToContent = SizeToContent.Height,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            Background = new SolidColorBrush(Color.FromRgb(0, 16, 91)), // #00105B
+            ResizeMode = ResizeMode.NoResize
+        };
+
+        var outer = new Border { BorderBrush = new SolidColorBrush(Color.FromRgb(96, 97, 182)), BorderThickness = new Thickness(1) };
+        var root = new StackPanel();
+
+        // Top Indigo Header Strip (#6061B6)
+        var header = new Border { Background = new SolidColorBrush(Color.FromRgb(96, 97, 182)), Padding = new Thickness(18, 12, 18, 12) };
+        var headerStack = new StackPanel();
+        headerStack.Children.Add(new TextBlock { Text = "UMLFORGE WORKSPACE", Foreground = Fg, FontSize = 15, FontWeight = FontWeights.Bold });
+        headerStack.Children.Add(new TextBlock { Text = "Select a package to open or initialize a new model.", Foreground = Fg, FontSize = 11.5, Opacity = 0.9, Margin = new Thickness(0, 2, 0, 0) });
+        header.Child = headerStack;
+        root.Children.Add(header);
+
+        var sp = new StackPanel { Margin = new Thickness(18) };
+        Project chosenProj = null;
+        UmlPackage chosenPkg = null;
+        string chosenFile = "";
+
+        if (autosaved != null && autosaved.Packages.Count > 0)
+        {
+            sp.Children.Add(new TextBlock { Text = $"RECENT PROJECT: {autosaved.Name.ToUpperInvariant()}", Foreground = Muted, FontSize = 10.5, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 6) });
+            var pkgList = new ListBox { MaxHeight = 165, Margin = new Thickness(0, 0, 0, 10) };
+            foreach (var pkg in autosaved.Packages)
+                pkgList.Items.Add(new ListBoxItem { Content = $"📦  {pkg.Name}   —   {pkg.Diagrams.Count} diagram(s)", Tag = pkg });
+            pkgList.SelectedIndex = 0;
+            sp.Children.Add(pkgList);
+
+            var openRecent = new Button { Content = "Open Selected Package", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 12), IsDefault = true };
+            openRecent.Click += (_, _) =>
+            {
+                chosenProj = autosaved;
+                chosenPkg = (pkgList.SelectedItem as ListBoxItem)?.Tag as UmlPackage;
+                chosenFile = lastFile ?? "";
+                w.DialogResult = true;
+            };
+            sp.Children.Add(openRecent);
+        }
+
+        sp.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(Color.FromRgb(96, 97, 182)), Margin = new Thickness(0, 0, 0, 12) });
+
+        var newBtn = new Button { Content = "+  Create New Project & Package…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 8) };
+        newBtn.Click += (_, _) =>
+        {
+            var projName = Input(w, "New Project", "Project name:", "MyProject");
+            if (string.IsNullOrWhiteSpace(projName)) return;
+            var pkgName = Input(w, "Initial Package", "Package name:", "CoreModel");
+            if (string.IsNullOrWhiteSpace(pkgName)) return;
+            var p = new Project { Name = projName.Trim() };
+            var pkg = new UmlPackage { Name = pkgName.Trim() };
+            pkg.Diagrams.Add(new Diagram { Kind = DiagramKind.Class, Name = "Main" });
+            p.Packages.Add(pkg);
+            chosenProj = p; chosenPkg = pkg;
+            w.DialogResult = true;
+        };
+        sp.Children.Add(newBtn);
+
+        var openFileBtn = new Button { Content = "Open .uforge File from Disk…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 8) };
+        openFileBtn.Click += (_, _) =>
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "UmlForge project (*.uforge)|*.uforge|JSON (*.json)|*.json|All files (*.*)|*.*" };
+            if (dlg.ShowDialog() == true)
+            {
+                try
+                {
+                    chosenProj = ProjectStore.Load(dlg.FileName);
+                    chosenPkg = chosenProj.Packages.FirstOrDefault();
+                    chosenFile = dlg.FileName;
+                    w.DialogResult = true;
+                }
+                catch (Exception ex) { MessageBox.Show("Could not open file:\n" + ex.Message, "UmlForge"); }
+            }
+        };
+        sp.Children.Add(openFileBtn);
+
+        var sampleBtn = new Button { Content = "Load Sample Project (Library Management System)", HorizontalAlignment = HorizontalAlignment.Stretch };
+        sampleBtn.Click += (_, _) =>
+        {
+            chosenProj = Seed.Build();
+            chosenPkg = chosenProj.Packages.FirstOrDefault();
+            w.DialogResult = true;
+        };
+        sp.Children.Add(sampleBtn);
+
+        root.Children.Add(sp);
+        outer.Child = root;
+        w.Content = outer;
+
+        if (w.ShowDialog() == true && chosenProj != null)
+            return (chosenProj, chosenPkg, chosenFile);
+
+        return null;
     }
 
     public static (DiagramKind kind, string name)? NewDiagram(Window owner)

@@ -2,180 +2,186 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:m="clr-namespace:UmlForge"
-        Title="UmlForge" Width="1500" Height="950" WindowStartupLocation="CenterScreen">
-  <DockPanel>
-    <!-- Top bar -->
-    <Border DockPanel.Dock="Top" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="10,6">
-      <DockPanel>
-        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-          <Path Data="M4,18 L12,4 L20,18 Z M12,4 V18" Stroke="{StaticResource Cyan}" StrokeThickness="2" Width="20" Height="20" Stretch="Uniform" Margin="0,0,8,0"/>
-          <TextBlock Text="UmlForge" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
-          <Border Background="{StaticResource Panel2}" CornerRadius="5" Padding="6,2" Margin="8,0,0,0" VerticalAlignment="Center">
-            <TextBlock Text="UML 2.5" FontSize="10" Foreground="{StaticResource Muted}"/>
-          </Border>
-          <TextBox x:Name="ProjectNameBox" Width="220" Margin="14,0,0,0" VerticalAlignment="Center" BorderThickness="0" Background="Transparent" FontWeight="SemiBold"/>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-          <Button x:Name="UndoBtn" Content="↶" Width="34" ToolTip="Undo (Ctrl+Z)" Margin="0,0,4,0"/>
-          <Button x:Name="RedoBtn" Content="↷" Width="34" ToolTip="Redo (Ctrl+Y)" Margin="0,0,8,0"/>
-          <Button x:Name="SaveBtn" Content="Save" Width="70" Margin="0,0,4,0"/>
-          <Button x:Name="ExportBtn" Content="Export ▾" Width="86"/>
-        </StackPanel>
-        <Menu x:Name="TopMenu" Margin="16,0,0,0" VerticalAlignment="Center">
-          <MenuItem Header="_File">
-            <MenuItem x:Name="NewProjectMenu" Header="New project"/>
-            <MenuItem x:Name="OpenMenu" Header="Open…" InputGestureText="Ctrl+O"/>
-            <MenuItem x:Name="SaveMenu" Header="Save" InputGestureText="Ctrl+S"/>
-            <MenuItem x:Name="SaveAsMenu" Header="Save as…"/>
-            <Separator/>
-            <MenuItem x:Name="ExportPngMenu" Header="Export diagram as PNG…"/>
-            <MenuItem x:Name="ExportXmiMenu" Header="Export model as XMI 2.5…"/>
-            <Separator/>
-            <MenuItem x:Name="ResetSampleMenu" Header="Reload sample project"/>
-            <MenuItem x:Name="ExitMenu" Header="Exit"/>
-          </MenuItem>
-          <MenuItem Header="_Edit">
-            <MenuItem x:Name="UndoMenu" Header="Undo" InputGestureText="Ctrl+Z"/>
-            <MenuItem x:Name="RedoMenu" Header="Redo" InputGestureText="Ctrl+Y"/>
-            <Separator/>
-            <MenuItem x:Name="DupMenu" Header="Duplicate" InputGestureText="Ctrl+D"/>
-            <MenuItem x:Name="DeleteMenu" Header="Delete" InputGestureText="Del"/>
-            <MenuItem x:Name="SelectAllMenu" Header="Select all" InputGestureText="Ctrl+A"/>
-          </MenuItem>
-          <MenuItem Header="_View">
-            <MenuItem x:Name="GridMenu" Header="Grid" IsCheckable="True" IsChecked="True"/>
-            <MenuItem x:Name="SnapMenu" Header="Snap to grid" IsCheckable="True" IsChecked="True"/>
-            <MenuItem x:Name="GuidesMenu" Header="Smart guides" IsCheckable="True" IsChecked="True"/>
-            <MenuItem x:Name="ShadowsMenu" Header="Paper shadows" IsCheckable="True" IsChecked="True"/>
-            <Separator/>
-            <MenuItem Header="Paper">
-              <MenuItem x:Name="PaperWhite" Header="White"/>
-              <MenuItem x:Name="PaperCream" Header="Cream"/>
-              <MenuItem x:Name="PaperBlueprint" Header="Blueprint"/>
-            </MenuItem>
-            <MenuItem Header="Diagram font size">
-              <MenuItem x:Name="FontMinus" Header="Smaller"/>
-              <MenuItem x:Name="FontPlus" Header="Larger"/>
-            </MenuItem>
-            <MenuItem Header="Grid size">
-              <MenuItem x:Name="GridMinus" Header="Finer"/>
-              <MenuItem x:Name="GridPlus" Header="Coarser"/>
-            </MenuItem>
-            <Separator/>
-            <MenuItem x:Name="FitMenu" Header="Fit diagram" InputGestureText="Ctrl+0"/>
-            <MenuItem x:Name="ActualMenu" Header="Actual size" InputGestureText="Ctrl+1"/>
-          </MenuItem>
-          <MenuItem Header="_Diagram">
-            <MenuItem x:Name="NewDiagramMenu" Header="New diagram…"/>
-            <MenuItem x:Name="RenameDiagramMenu" Header="Rename current diagram…"/>
-            <MenuItem x:Name="DuplicateDiagramMenu" Header="Duplicate current diagram"/>
-            <MenuItem x:Name="DeleteDiagramMenu" Header="Delete current diagram"/>
-            <Separator/>
-            <MenuItem x:Name="AddPackageMenu" Header="Add package…"/>
-          </MenuItem>
-          <MenuItem Header="_Help">
-            <MenuItem x:Name="HelpMenu" Header="Shortcuts &amp; UML notation" InputGestureText="F1"/>
-            <MenuItem x:Name="AboutMenu" Header="About UmlForge"/>
-          </MenuItem>
-        </Menu>
-      </DockPanel>
-    </Border>
-
-    <!-- Status bar -->
-    <Border DockPanel.Dock="Bottom" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="10,4">
-      <DockPanel>
-        <TextBlock x:Name="ChecksStatus" DockPanel.Dock="Left" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center"/>
-        <TextBlock x:Name="SaveStatus" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" FontSize="11" Margin="14,0,0,0" VerticalAlignment="Center"/>
-        <TextBlock x:Name="ZoomStatus" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" FontSize="11" Margin="14,0,0,0" VerticalAlignment="Center"/>
-        <TextBlock x:Name="CoordsStatus" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" FontSize="11" Margin="14,0,0,0" VerticalAlignment="Center"/>
-        <TextBlock x:Name="HintStatus" Foreground="{StaticResource Cyan}" FontSize="11" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="16,0,0,0"/>
-      </DockPanel>
-    </Border>
-
-    <!-- Main -->
-    <Grid>
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="264"/>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="320"/>
-      </Grid.ColumnDefinitions>
-
-      <!-- Left -->
-      <Border Grid.Column="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
-        <DockPanel>
-          <Border DockPanel.Dock="Top" Padding="10,8" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+        Title="UmlForge" Width="1360" Height="820" MinWidth="960" MinHeight="620"
+        WindowStartupLocation="CenterScreen">
+    <DockPanel>
+        <!-- Top Command Bar -->
+        <Border DockPanel.Dock="Top" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="10,6">
             <DockPanel>
-              <TextBlock Text="MODEL" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
-              <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
-                <Button x:Name="AddPkgBtn" Content="+ Pkg" Padding="6,2" FontSize="10" Margin="0,0,4,0"/>
-                <Button x:Name="AddDiagramBtn" Content="+ Diagram" Padding="6,2" FontSize="10"/>
-              </StackPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <Border Background="{StaticResource AccentBrush}" BorderBrush="{StaticResource IvoryBrush}" BorderThickness="1" Padding="7,3" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="M4,18 L12,4 L20,18 Z M12,4 V18" Stroke="{StaticResource IvoryBrush}" StrokeThickness="1.8" Width="15" Height="15" Stretch="Uniform" Margin="0,0,6,0"/>
+                            <TextBlock Text="UMLFORGE" FontSize="13" FontWeight="Bold" Foreground="{StaticResource IvoryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0" Padding="6,3" Margin="0,0,10,0" VerticalAlignment="Center">
+                        <TextBlock Text="UML 2.5" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource SecondaryBrush}"/>
+                    </Border>
+                    <TextBox x:Name="ProjectNameBox" Width="220" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button x:Name="UndoBtn" Content="↶" Width="34" ToolTip="Undo (Ctrl+Z)" Margin="0,0,4,0"/>
+                    <Button x:Name="RedoBtn" Content="↷" Width="34" ToolTip="Redo (Ctrl+Y)" Margin="0,0,8,0"/>
+                    <Button x:Name="SaveBtn" Content="Save" Width="72" Margin="0,0,4,0"/>
+                    <Button x:Name="ExportBtn" Content="Export ▾" Width="88"/>
+                </StackPanel>
+                <Menu x:Name="TopMenu" Margin="14,0,0,0" VerticalAlignment="Center">
+                    <MenuItem Header="_File">
+                        <MenuItem x:Name="NewProjectMenu" Header="New project"/>
+                        <MenuItem x:Name="OpenMenu" Header="Open…" InputGestureText="Ctrl+O"/>
+                        <MenuItem x:Name="SaveMenu" Header="Save" InputGestureText="Ctrl+S"/>
+                        <MenuItem x:Name="SaveAsMenu" Header="Save as…"/>
+                        <Separator/>
+                        <MenuItem x:Name="ExportPngMenu" Header="Export diagram as PNG…"/>
+                        <MenuItem x:Name="ExportXmiMenu" Header="Export model as XMI 2.5…"/>
+                        <Separator/>
+                        <MenuItem x:Name="ResetSampleMenu" Header="Reload sample project"/>
+                        <MenuItem x:Name="ExitMenu" Header="Exit"/>
+                    </MenuItem>
+                    <MenuItem Header="_Edit">
+                        <MenuItem x:Name="UndoMenu" Header="Undo" InputGestureText="Ctrl+Z"/>
+                        <MenuItem x:Name="RedoMenu" Header="Redo" InputGestureText="Ctrl+Y"/>
+                        <Separator/>
+                        <MenuItem x:Name="DupMenu" Header="Duplicate" InputGestureText="Ctrl+D"/>
+                        <MenuItem x:Name="DeleteMenu" Header="Delete" InputGestureText="Del"/>
+                        <MenuItem x:Name="SelectAllMenu" Header="Select all" InputGestureText="Ctrl+A"/>
+                    </MenuItem>
+                    <MenuItem Header="_View">
+                        <MenuItem x:Name="GridMenu" Header="Grid" IsCheckable="True" IsChecked="True"/>
+                        <MenuItem x:Name="SnapMenu" Header="Snap to grid" IsCheckable="True" IsChecked="True"/>
+                        <MenuItem x:Name="GuidesMenu" Header="Smart guides" IsCheckable="True" IsChecked="True"/>
+                        <MenuItem x:Name="ShadowsMenu" Header="Paper shadows" IsCheckable="True" IsChecked="True"/>
+                        <Separator/>
+                        <MenuItem Header="Paper">
+                            <MenuItem x:Name="PaperWhite" Header="Ivory (Default)"/>
+                            <MenuItem x:Name="PaperCream" Header="Warm Parchment"/>
+                            <MenuItem x:Name="PaperBlueprint" Header="Navy Blueprint"/>
+                        </MenuItem>
+                        <MenuItem Header="Diagram font size">
+                            <MenuItem x:Name="FontMinus" Header="Smaller"/>
+                            <MenuItem x:Name="FontPlus" Header="Larger"/>
+                        </MenuItem>
+                        <MenuItem Header="Grid size">
+                            <MenuItem x:Name="GridMinus" Header="Finer"/>
+                            <MenuItem x:Name="GridPlus" Header="Coarser"/>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem x:Name="FitMenu" Header="Fit diagram" InputGestureText="Ctrl+0"/>
+                        <MenuItem x:Name="ActualMenu" Header="Actual size" InputGestureText="Ctrl+1"/>
+                    </MenuItem>
+                    <MenuItem Header="_Diagram">
+                        <MenuItem x:Name="NewDiagramMenu" Header="New diagram…"/>
+                        <MenuItem x:Name="RenameDiagramMenu" Header="Rename current diagram…"/>
+                        <MenuItem x:Name="DuplicateDiagramMenu" Header="Duplicate current diagram"/>
+                        <MenuItem x:Name="DeleteDiagramMenu" Header="Delete current diagram"/>
+                        <Separator/>
+                        <MenuItem x:Name="AddPackageMenu" Header="Add package…"/>
+                    </MenuItem>
+                    <MenuItem Header="_Help">
+                        <MenuItem x:Name="HelpMenu" Header="Shortcuts &amp; UML notation" InputGestureText="F1"/>
+                        <MenuItem x:Name="AboutMenu" Header="About UmlForge"/>
+                    </MenuItem>
+                </Menu>
             </DockPanel>
-          </Border>
-          <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="10,8,10,4" ToolTip="Search diagrams and elements"/>
-          <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0">
-            <DockPanel>
-              <Border DockPanel.Dock="Top" Padding="10,8">
-                <TextBlock Text="PALETTE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Muted}"/>
-              </Border>
-              <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="380">
-                <StackPanel x:Name="PalettePanel" Margin="8,0,8,8"/>
-              </ScrollViewer>
-            </DockPanel>
-          </Border>
-          <Grid>
-            <TreeView x:Name="ExplorerTree" Margin="6,4"/>
-            <ListBox x:Name="SearchResults" Margin="6,4" Visibility="Collapsed"/>
-          </Grid>
-        </DockPanel>
-      </Border>
-
-      <!-- Center -->
-      <Grid Grid.Column="1">
-        <Grid.RowDefinitions>
-          <RowDefinition Height="Auto"/>
-          <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-        <Border Grid.Row="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
-          <DockPanel>
-            <Button x:Name="NewTabBtn" DockPanel.Dock="Right" Content="+" Width="30" Margin="4" ToolTip="New diagram"/>
-            <TabControl x:Name="DiagramTabs" Background="Transparent" BorderThickness="0"/>
-          </DockPanel>
         </Border>
-        <Grid Grid.Row="1">
-          <Border x:Name="CanvasHost"/>
-          <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False"/>
-          <Border x:Name="EmptyHint" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="Collapsed">
-            <StackPanel>
-              <TextBlock Text="Blank paper" FontSize="20" FontWeight="SemiBold" Foreground="#9AA7BF" HorizontalAlignment="Center"/>
-              <TextBlock Text="Pick a tool from the palette and click the paper — or drag from an element's blue port to connect." Foreground="#7C8AA5" FontSize="12" Margin="0,6,0,0" TextWrapping="Wrap" MaxWidth="380" TextAlignment="Center"/>
-            </StackPanel>
-          </Border>
-          <!-- floating canvas toolbar -->
-          <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="9" Padding="4">
-            <StackPanel Orientation="Horizontal">
-              <Button x:Name="SelectToolBtn" Content="➤" Width="30" ToolTip="Select (V)" Margin="0,0,2,0"/>
-              <Button x:Name="PanToolBtn" Content="✥" Width="30" ToolTip="Pan (H)" Margin="0,0,8,0"/>
-              <Button x:Name="ZoomOutBtn" Content="−" Width="30" Margin="0,0,2,0"/>
-              <Button x:Name="ZoomInBtn" Content="+" Width="30" Margin="0,0,2,0"/>
-              <Button x:Name="FitBtn" Content="Fit" Width="40" Margin="0,0,2,0"/>
-              <Button x:Name="ActualBtn" Content="1:1" Width="40"/>
-            </StackPanel>
-          </Border>
-        </Grid>
-      </Grid>
 
-      <!-- Right -->
-      <Border Grid.Column="2" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1,0,0,0">
-        <TabControl x:Name="RightTabs" Margin="0,6,0,0">
-          <TabItem Header="Properties">
-            <Border x:Name="PropsHost"/>
-          </TabItem>
-          <TabItem x:Name="ChecksTab" Header="Checks">
-            <ListBox x:Name="ChecksList" Margin="6"/>
-          </TabItem>
-        </TabControl>
-      </Border>
-    </Grid>
-  </DockPanel>
+        <!-- Status Bar (Distinct #6061B6 Strip) -->
+        <Border DockPanel.Dock="Bottom" Background="{StaticResource AccentBrush}" BorderBrush="{StaticResource SecondaryBrush}" BorderThickness="0,1,0,0" Padding="10,4">
+            <DockPanel>
+                <TextBlock x:Name="ChecksStatus" DockPanel.Dock="Left" Foreground="{StaticResource IvoryBrush}" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center"/>
+                <TextBlock x:Name="SaveStatus" DockPanel.Dock="Right" Foreground="{StaticResource IvoryBrush}" FontSize="11" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="ZoomStatus" DockPanel.Dock="Right" Foreground="{StaticResource IvoryBrush}" FontSize="11" FontWeight="Bold" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="CoordsStatus" DockPanel.Dock="Right" Foreground="{StaticResource IvoryBrush}" FontSize="11" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="HintStatus" Foreground="{StaticResource IvoryBrush}" FontSize="11" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="16,0,0,0"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Main Workspace -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="264"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="320"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Rail: Model & Palette -->
+            <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Background="{StaticResource AccentBrush}" Padding="10,6" BorderBrush="{StaticResource SecondaryBrush}" BorderThickness="0,0,0,1">
+                        <DockPanel>
+                            <TextBlock Text="MODEL EXPLORER" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource IvoryBrush}" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                                <Button x:Name="AddPkgBtn" Content="+ Pkg" Padding="6,2" FontSize="10" Margin="0,0,4,0"/>
+                                <Button x:Name="AddDiagramBtn" Content="+ Diagram" Padding="6,2" FontSize="10"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                    <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="10,8,10,4" ToolTip="Search diagrams and elements"/>
+                    <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" Background="{StaticResource AccentBrush}" Padding="10,6" Margin="0,0,0,4">
+                                <TextBlock Text="TOOLBOX" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource IvoryBrush}"/>
+                            </Border>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="380">
+                                <StackPanel x:Name="PalettePanel" Margin="8,0,8,8"/>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Border>
+                    <Grid>
+                        <TreeView x:Name="ExplorerTree" Margin="6,4"/>
+                        <ListBox x:Name="SearchResults" Margin="6,4" Visibility="Collapsed"/>
+                    </Grid>
+                </DockPanel>
+            </Border>
+
+            <!-- Center Canvas Stage -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                    <DockPanel>
+                        <Button x:Name="NewTabBtn" DockPanel.Dock="Right" Content="+" Width="30" Margin="4" ToolTip="New diagram"/>
+                        <TabControl x:Name="DiagramTabs" Background="Transparent" BorderThickness="0"/>
+                    </DockPanel>
+                </Border>
+                <Grid Grid.Row="1">
+                    <Border x:Name="CanvasHost"/>
+                    <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False"/>
+                    <Border x:Name="EmptyHint" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="Collapsed"
+                  Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" Padding="20,16">
+                        <StackPanel>
+                            <TextBlock Text="EMPTY DIAGRAM" FontSize="15" FontWeight="Bold" Foreground="{StaticResource IvoryBrush}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Select an element from the Toolbox and click on the canvas, or click source then target to connect." Foreground="{StaticResource SecondaryBrush}" FontSize="12" Margin="0,6,0,0" TextWrapping="Wrap" MaxWidth="360" TextAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <!-- Sharp Floating Canvas Toolbar -->
+                    <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="0" Padding="4">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="SelectToolBtn" Content="➤" Width="30" ToolTip="Select (V)" Margin="0,0,2,0"/>
+                            <Button x:Name="PanToolBtn" Content="✥" Width="30" ToolTip="Pan (H)" Margin="0,0,8,0"/>
+                            <Button x:Name="ZoomOutBtn" Content="−" Width="30" ToolTip="Zoom out" Margin="0,0,2,0"/>
+                            <Button x:Name="ZoomInBtn" Content="+" Width="30" ToolTip="Zoom in" Margin="0,0,2,0"/>
+                            <Button x:Name="FitBtn" Content="Fit" Width="40" ToolTip="Fit to screen (Ctrl+0)" Margin="0,0,2,0"/>
+                            <Button x:Name="ActualBtn" Content="1:1" Width="40" ToolTip="Actual size (Ctrl+1)"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- Right Inspector -->
+            <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+                <TabControl x:Name="RightTabs" Margin="0,6,0,0">
+                    <TabItem Header="Properties">
+                        <Border x:Name="PropsHost"/>
+                    </TabItem>
+                    <TabItem x:Name="ChecksTab" Header="Checks">
+                        <ListBox x:Name="ChecksList" Margin="6"/>
+                    </TabItem>
+                </TabControl>
+            </Border>
+        </Grid>
+    </DockPanel>
 </Window>

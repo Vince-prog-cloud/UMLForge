@@ -19,8 +19,8 @@ public class PropertyFieldBuilder
 
     public bool Editing { get; set; }
 
-    static Brush Muted => new SolidColorBrush(Color.FromRgb(143, 161, 192));
-    static Brush TextBrush => new SolidColorBrush(Color.FromRgb(232, 238, 249));
+    static Brush Muted => new SolidColorBrush(Color.FromRgb(201, 181, 224));     // #C9B5E0
+    static Brush TextBrush => new SolidColorBrush(Color.FromRgb(252, 249, 236)); // #FCF9EC
 
     public PropertyFieldBuilder(Editor ed, StackPanel root, Dispatcher dispatcher, List<Action> cleanup)
     {
